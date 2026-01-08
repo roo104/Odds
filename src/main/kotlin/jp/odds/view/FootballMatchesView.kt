@@ -1,32 +1,37 @@
 package jp.odds.view
 
+import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.checkbox.Checkbox
 import com.vaadin.flow.component.details.Details
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.html.H3
 import com.vaadin.flow.component.html.H4
+import com.vaadin.flow.component.notification.Notification
+import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.NumberField
+import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.router.Route
 import jp.odds.dto.SofascoreEvent
+import jp.odds.dto.SofascoreEventsResponse
 import jp.odds.service.SofascoreService
 import kotlinx.coroutines.runBlocking
+import tools.jackson.databind.ObjectMapper
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Route("")
-class FootballMatchesView(
-    private val sofascoreService: SofascoreService
-) : VerticalLayout() {
+class FootballMatchesView(private val sofascoreService: SofascoreService) : VerticalLayout() {
 
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault())
     private var allMatches: List<SofascoreEvent> = emptyList()
     private val contentLayout = VerticalLayout()
     private var minOdds: Double = 3.0
     private var minVotePercent: Int = 70
+    private val objectMapper = ObjectMapper()
 
     init {
         setSizeFull()
@@ -66,7 +71,16 @@ class FootballMatchesView(
         val filterLayout = HorizontalLayout(filterCheckbox, oddsSlider, voteSlider)
         filterLayout.setWidthFull()
 
-        add(filterLayout)
+        // Import JSON button
+        val importButton = Button("Import JSON") {
+            showImportDialog()
+        }
+
+        val topLayout = HorizontalLayout(filterLayout, importButton)
+        topLayout.setWidthFull()
+        topLayout.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER)
+
+        add(topLayout)
         add(contentLayout)
         contentLayout.setSizeFull()
 
@@ -114,9 +128,12 @@ class FootballMatchesView(
         grid.addColumn { event -> formatOdds(event.odds?.draw) }.setHeader("Draw Odds").setAutoWidth(true)
         grid.addColumn { event -> formatOdds(event.odds?.away) }.setHeader("Away Odds").setAutoWidth(true)
 
-        grid.addColumn { event -> event.voting?.home?.let { "$it%" } ?: "-" }.setHeader("Home Vote %").setAutoWidth(true)
-        grid.addColumn { event -> event.voting?.draw?.let { "$it%" } ?: "-" }.setHeader("Draw Vote %").setAutoWidth(true)
-        grid.addColumn { event -> event.voting?.away?.let { "$it%" } ?: "-" }.setHeader("Away Vote %").setAutoWidth(true)
+        grid.addColumn { event -> event.voting?.home?.let { "$it%" } ?: "-" }.setHeader("Home Vote %")
+            .setAutoWidth(true)
+        grid.addColumn { event -> event.voting?.draw?.let { "$it%" } ?: "-" }.setHeader("Draw Vote %")
+            .setAutoWidth(true)
+        grid.addColumn { event -> event.voting?.away?.let { "$it%" } ?: "-" }.setHeader("Away Vote %")
+            .setAutoWidth(true)
 
         grid.addColumn { event -> event.status.description }.setHeader("Status").setAutoWidth(true)
         grid.addColumn { event -> event.tournament.name }.setHeader("Tournament").setAutoWidth(true)
@@ -307,7 +324,7 @@ class FootballMatchesView(
 
     private fun formatOdds(fractionalOdds: String?): String {
         if (fractionalOdds == null) return "-"
-        
+
         return try {
             val parts = fractionalOdds.split("/")
             if (parts.size == 2) {
@@ -348,5 +365,53 @@ class FootballMatchesView(
             details.setWidthFull()
             contentLayout.add(details)
         }
+    }
+
+    private fun showImportDialog() {
+        val dialog = Dialog()
+        dialog.setHeaderTitle("Import Sofascore API JSON")
+        dialog.setWidth("800px")
+        dialog.setHeight("600px")
+
+        val textArea = TextArea("Paste JSON Response")
+        textArea.setWidthFull()
+        textArea.setHeight("400px")
+        textArea.placeholder =
+            "Paste the JSON response from https://api.sofascore.com/api/v1/sport/football/scheduled-events/YYYY-MM-DD"
+
+        val importBtn = Button("Import") {
+            try {
+                val jsonText = textArea.value
+                if (jsonText.isNullOrBlank()) {
+                    Notification.show("Please paste JSON content", 3000, Notification.Position.MIDDLE)
+                    return@Button
+                }
+
+                val response = objectMapper.readValue(jsonText, SofascoreEventsResponse::class.java)
+
+                allMatches = response.events
+                refreshMatchDisplay(false)
+
+                Notification.show(
+                    "Successfully imported ${response.events.size} matches",
+                    3000,
+                    Notification.Position.MIDDLE
+                )
+                dialog.close()
+            } catch (e: Exception) {
+                Notification.show("Error parsing JSON: ${e.message}", 5000, Notification.Position.MIDDLE)
+            }
+        }
+
+        val cancelBtn = Button("Cancel") {
+            dialog.close()
+        }
+
+        val buttonLayout = HorizontalLayout(importBtn, cancelBtn)
+        val content = VerticalLayout(textArea, buttonLayout)
+        content.setSizeFull()
+
+        dialog.add(content)
+        dialog.open()
     }
 }

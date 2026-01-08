@@ -42,3 +42,4 @@ out/
 
 ### Vaadin ###
 src/main/frontend/generated/
+/src/main/bundles/prod.bundle

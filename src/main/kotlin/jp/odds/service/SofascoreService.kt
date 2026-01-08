@@ -151,7 +151,7 @@ class SofascoreService(
         logger.info("Saved ${entities.size} matches to database for date $matchDate")
     }
 
-    private suspend fun fetchOddsForEvent(eventId: Long): Odds? {
+    suspend fun fetchOddsForEvent(eventId: Long): Odds? {
         return try {
             val oddsResponse = webClient
                 .get()
@@ -189,7 +189,7 @@ class SofascoreService(
         }
     }
 
-    private suspend fun fetchVotingForEvent(eventId: Long): Voting? {
+    suspend fun fetchVotingForEvent(eventId: Long): Voting? {
         return try {
             val response = webClient
                 .get()
