@@ -39,3 +39,6 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+### Vaadin ###
+src/main/frontend/generated/
