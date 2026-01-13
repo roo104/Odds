@@ -36,16 +36,20 @@ class SofascoreService(
 
     suspend fun getTodayFootballMatches(): List<SofascoreEvent> {
         val tomorrow = LocalDate.now().plusDays(1)
-        val tomorrowStr = tomorrow.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        return getFootballMatchesByDate(tomorrow)
+    }
+
+    suspend fun getFootballMatchesByDate(date: LocalDate): List<SofascoreEvent> {
+        val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         // Check if data for this date already exists in database
-        if (dailyMatchDataRepository.existsByMatchDate(tomorrow)) {
-            logger.info("Loading matches for $tomorrowStr from database")
-            return loadMatchesFromDatabase(tomorrow)
+        if (dailyMatchDataRepository.existsByMatchDate(date)) {
+            logger.info("Loading matches for $dateStr from database")
+            return loadMatchesFromDatabase(date)
         }
 
-        val uri = "/sport/football/scheduled-events/$tomorrowStr"
-        logger.info("Fetching football matches for date: $tomorrowStr from URI: $uri")
+        val uri = "/sport/football/scheduled-events/$dateStr"
+        logger.info("Fetching football matches for date: $dateStr from URI: $uri")
 
         return try {
             val response = webClient
@@ -64,7 +68,7 @@ class SofascoreService(
             }
 
             // Save to database
-            saveMatchesToDatabase(tomorrow, response.events)
+            saveMatchesToDatabase(date, response.events)
 
             response.events
         } catch (e: Exception) {

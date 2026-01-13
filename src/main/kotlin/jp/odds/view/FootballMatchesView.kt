@@ -2,6 +2,7 @@ package jp.odds.view
 
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.checkbox.Checkbox
+import com.vaadin.flow.component.datepicker.DatePicker
 import com.vaadin.flow.component.details.Details
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.grid.Grid
@@ -18,27 +19,59 @@ import jp.odds.dto.SofascoreEvent
 import jp.odds.dto.SofascoreEventsResponse
 import jp.odds.service.SofascoreService
 import kotlinx.coroutines.runBlocking
+import org.slf4j.LoggerFactory
 import tools.jackson.databind.ObjectMapper
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Route("")
 class FootballMatchesView(private val sofascoreService: SofascoreService) : VerticalLayout() {
 
+    private val logger = LoggerFactory.getLogger(FootballMatchesView::class.java)
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault())
     private var allMatches: List<SofascoreEvent> = emptyList()
     private val contentLayout = VerticalLayout()
     private var minOdds: Double = 3.0
     private var minVotePercent: Int = 70
     private val objectMapper = ObjectMapper()
+    private var currentDate: LocalDate = LocalDate.now()
+    private lateinit var filterCheckbox: Checkbox
 
     init {
         setSizeFull()
         element.themeList.add("dark")
         addStyleSheet()
 
-        val filterCheckbox = Checkbox("Show only Not Started matches")
+        // Date navigation
+        val prevDayButton = Button("Previous Day") {
+            currentDate = currentDate.minusDays(1)
+            loadMatches(currentDate)
+        }
+
+        val datePicker = DatePicker("Date")
+        datePicker.value = currentDate
+        datePicker.addValueChangeListener { event ->
+            currentDate = event.value
+            loadMatches(currentDate)
+        }
+
+        val nextDayButton = Button("Next Day") {
+            currentDate = currentDate.plusDays(1)
+            loadMatches(currentDate)
+        }
+
+        val todayButton = Button("Today") {
+            currentDate = LocalDate.now()
+            datePicker.value = currentDate
+            loadMatches(currentDate)
+        }
+
+        val dateNavLayout = HorizontalLayout(prevDayButton, datePicker, nextDayButton, todayButton)
+        dateNavLayout.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER)
+
+        filterCheckbox = Checkbox("Show only Not Started matches")
         filterCheckbox.addValueChangeListener { event ->
             refreshMatchDisplay(event.value)
         }
@@ -76,15 +109,14 @@ class FootballMatchesView(private val sofascoreService: SofascoreService) : Vert
             showImportDialog()
         }
 
-        val topLayout = HorizontalLayout(filterLayout, importButton)
+        val topLayout = VerticalLayout(dateNavLayout, HorizontalLayout(filterLayout, importButton))
         topLayout.setWidthFull()
-        topLayout.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER)
 
         add(topLayout)
         add(contentLayout)
         contentLayout.setSizeFull()
 
-        loadMatches()
+        loadMatches(currentDate)
     }
 
     private fun addStyleSheet() {
@@ -340,10 +372,11 @@ class FootballMatchesView(private val sofascoreService: SofascoreService) : Vert
         }
     }
 
-    private fun loadMatches() {
+    private fun loadMatches(date: LocalDate = LocalDate.now()) {
         runBlocking {
-            allMatches = sofascoreService.getTodayFootballMatches()
-            refreshMatchDisplay(false)
+            allMatches = sofascoreService.getFootballMatchesByDate(date)
+            refreshMatchDisplay(filterCheckbox.value)
+            logger.info("Loaded and displayed ${allMatches.size} matches for date: $date (filterNotStarted=${filterCheckbox.value})")
         }
     }
 

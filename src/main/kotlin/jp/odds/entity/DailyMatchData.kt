@@ -13,31 +13,31 @@ data class DailyMatchData(
     val id: Long? = null,
 
     @Column(name = "match_date", nullable = false)
-    val matchDate: LocalDate,
+    val matchDate: LocalDate = LocalDate.now(),
 
     @Column(name = "event_id", nullable = false)
-    val eventId: Long,
+    val eventId: Long = 0,
 
     @Column(name = "start_timestamp", nullable = false)
-    val startTimestamp: Long,
+    val startTimestamp: Long = 0,
 
     @Column(name = "home_team_id", nullable = false)
-    val homeTeamId: Long,
+    val homeTeamId: Long = 0,
 
     @Column(name = "home_team_name", nullable = false)
-    val homeTeamName: String,
+    val homeTeamName: String = "",
 
     @Column(name = "away_team_id", nullable = false)
-    val awayTeamId: Long,
+    val awayTeamId: Long = 0,
 
     @Column(name = "away_team_name", nullable = false)
-    val awayTeamName: String,
+    val awayTeamName: String = "",
 
     @Column(name = "tournament_name", nullable = false)
-    val tournamentName: String,
+    val tournamentName: String = "",
 
     @Column(name = "category_name", nullable = false)
-    val categoryName: String,
+    val categoryName: String = "",
 
     @Column(name = "odds_home")
     val oddsHome: String? = null,
@@ -58,8 +58,8 @@ data class DailyMatchData(
     val votingAway: Int? = null,
 
     @Column(name = "status_type", nullable = false)
-    val statusType: String,
+    val statusType: String = "",
 
     @Column(name = "status_description", nullable = false)
-    val statusDescription: String
+    val statusDescription: String = ""
 )
