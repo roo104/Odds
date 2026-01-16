@@ -1,0 +1,42 @@
+.date-navigation {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  background-color: #2d2d2d;
+  border-radius: 8px;
+  align-items: center;
+}
+
+.nav-button {
+  background-color: #3a3a3a;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  padding: 10px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.nav-button:hover {
+  background-color: #4a4a4a;
+}
+
+.today-button {
+  margin-left: auto;
+}
+
+.date-picker {
+  background-color: #2d2d2d;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.date-picker::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}

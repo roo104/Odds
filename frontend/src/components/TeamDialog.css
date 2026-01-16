@@ -1,0 +1,101 @@
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog-content {
+  background-color: #2d2d2d;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background-color: #3a3a3a;
+  border-radius: 8px 8px 0 0;
+}
+
+.dialog-header h2 {
+  margin: 0;
+  color: #e0e0e0;
+  font-size: 18px;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: #e0e0e0;
+  font-size: 32px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  color: #fff;
+}
+
+.dialog-body {
+  padding: 20px;
+}
+
+.team-section {
+  margin-bottom: 30px;
+}
+
+.team-section h4 {
+  color: #e0e0e0;
+  margin-bottom: 10px;
+}
+
+.team-events-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #2d2d2d;
+}
+
+.team-events-table th {
+  background-color: #3a3a3a;
+  color: #e0e0e0;
+  padding: 10px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.team-events-table td {
+  padding: 10px;
+  border-bottom: 1px solid #444;
+  color: #e0e0e0;
+}
+
+.team-events-table tbody tr.result-win {
+  background-color: rgba(0, 255, 0, 0.3);
+}
+
+.team-events-table tbody tr.result-loss {
+  background-color: rgba(255, 0, 0, 0.3);
+}
+
+.team-events-table tbody tr.result-draw {
+  background-color: rgba(255, 255, 0, 0.2);
+}

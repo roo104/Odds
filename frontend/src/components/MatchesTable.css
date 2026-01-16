@@ -1,0 +1,43 @@
+.matches-table-container {
+  overflow-x: auto;
+}
+
+.matches-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #2d2d2d;
+}
+
+.matches-table th {
+  background-color: #3a3a3a;
+  color: #e0e0e0;
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.matches-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #444;
+  color: #e0e0e0;
+}
+
+.matches-table tbody tr {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.matches-table tbody tr:hover {
+  background-color: #3a3a3a;
+}
+
+.matches-table tbody tr.highlight-row {
+  background-color: rgba(0, 255, 0, 0.2);
+}
+
+.matches-table tbody tr.highlight-row:hover {
+  background-color: rgba(0, 255, 0, 0.3);
+}
