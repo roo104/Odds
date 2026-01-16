@@ -6,6 +6,8 @@ interface DateNavigationProps {
   onPreviousDay: () => void;
   onNextDay: () => void;
   onToday: () => void;
+  onRefresh: () => void;
+  isRefreshing: boolean;
 }
 
 function DateNavigation({
@@ -14,6 +16,8 @@ function DateNavigation({
   onPreviousDay,
   onNextDay,
   onToday,
+  onRefresh,
+  isRefreshing,
 }: DateNavigationProps) {
   const formatDateForInput = (date: Date) => {
     return date.toISOString().split('T')[0];
@@ -38,8 +42,15 @@ function DateNavigation({
       <button onClick={onNextDay} className="nav-button">
         Next Day
       </button>
-      <button onClick={onToday} className="nav-button today-button">
+      <button onClick={onToday} className="nav-button">
         Today
+      </button>
+      <button
+        onClick={onRefresh}
+        className="nav-button refresh-button"
+        disabled={isRefreshing}
+      >
+        {isRefreshing ? 'Refreshing...' : 'Refresh'}
       </button>
     </div>
   );

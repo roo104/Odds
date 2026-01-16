@@ -15,9 +15,25 @@ export const footballApi = {
     return response.json();
   },
 
+  refreshMatchesByDate: async (date: string): Promise<SofascoreEvent[]> => {
+    const response = await fetch(`${API_BASE_URL}/matches/date/${date}/refresh`, {
+      method: 'POST',
+    });
+    if (!response.ok) throw new Error('Failed to refresh matches by date');
+    return response.json();
+  },
+
   getTeamEvents: async (teamId: number): Promise<SofascoreEvent[]> => {
     const response = await fetch(`${API_BASE_URL}/team/${teamId}/events`);
     if (!response.ok) throw new Error('Failed to fetch team events');
+    return response.json();
+  },
+
+  refreshSingleMatch: async (eventId: number, date: string): Promise<SofascoreEvent> => {
+    const response = await fetch(`${API_BASE_URL}/matches/${eventId}/refresh?date=${date}`, {
+      method: 'POST',
+    });
+    if (!response.ok) throw new Error('Failed to refresh single match');
     return response.json();
   },
 };

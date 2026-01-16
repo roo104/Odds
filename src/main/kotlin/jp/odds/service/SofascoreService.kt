@@ -39,17 +39,17 @@ class SofascoreService(
         return getFootballMatchesByDate(tomorrow)
     }
 
-    suspend fun getFootballMatchesByDate(date: LocalDate): List<SofascoreEvent> {
+    suspend fun getFootballMatchesByDate(date: LocalDate, forceRefresh: Boolean = false): List<SofascoreEvent> {
         val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         // Check if data for this date already exists in database
-        if (dailyMatchDataRepository.existsByMatchDate(date)) {
+        if (!forceRefresh && dailyMatchDataRepository.existsByMatchDate(date)) {
             logger.info("Loading matches for $dateStr from database")
             return loadMatchesFromDatabase(date)
         }
 
         val uri = "/sport/football/scheduled-events/$dateStr"
-        logger.info("Fetching football matches for date: $dateStr from URI: $uri")
+        logger.info("Fetching football matches for date: $dateStr from URI: $uri (forceRefresh=$forceRefresh)")
 
         return try {
             val response = webClient
@@ -67,7 +67,11 @@ class SofascoreService(
                 event.voting = fetchVotingForEvent(event.id)
             }
 
-            // Save to database
+            // Save to database (delete old data if refreshing)
+            if (forceRefresh) {
+                dailyMatchDataRepository.deleteByMatchDate(date)
+                logger.info("Deleted old data for $dateStr before refresh")
+            }
             saveMatchesToDatabase(date, response.events)
 
             response.events
@@ -253,5 +257,70 @@ class SofascoreService(
                 0
             }
         }
+    }
+
+    suspend fun refreshSingleMatch(eventId: Long, matchDate: LocalDate): SofascoreEvent {
+        logger.info("Refreshing single match with eventId: $eventId")
+
+        // Find the existing match in database to get basic info
+        val existingData = dailyMatchDataRepository.findByMatchDate(matchDate)
+            .find { it.eventId == eventId }
+            ?: throw IllegalArgumentException("Match $eventId not found in database for date $matchDate")
+
+        // Just fetch fresh odds and voting data for this event
+        kotlinx.coroutines.delay(500L)
+        val odds = fetchOddsForEvent(eventId)
+        val voting = fetchVotingForEvent(eventId)
+
+        // Throw error if we couldn't fetch any fresh data
+        if (odds == null && voting == null) {
+            logger.warn("No odds or voting data fetched for match $eventId")
+            throw RuntimeException("Could not fetch fresh odds or voting data for match $eventId")
+        }
+
+        // Update in database with fresh data
+        val updatedData = existingData.copy(
+            oddsHome = odds?.home,
+            oddsDraw = odds?.draw,
+            oddsAway = odds?.away,
+            votingHome = voting?.home,
+            votingDraw = voting?.draw,
+            votingAway = voting?.away
+        )
+        dailyMatchDataRepository.save(updatedData)
+        logger.info("Updated odds and voting for match $eventId in database")
+
+        // Reconstruct the event from database with updated data
+        return SofascoreEvent(
+            id = updatedData.eventId,
+            startTimestamp = updatedData.startTimestamp,
+            homeTeam = Team(
+                id = updatedData.homeTeamId,
+                name = updatedData.homeTeamName,
+                country = null
+            ),
+            awayTeam = Team(
+                id = updatedData.awayTeamId,
+                name = updatedData.awayTeamName,
+                country = null
+            ),
+            homeScore = null,
+            awayScore = null,
+            status = Status(
+                type = updatedData.statusType,
+                description = updatedData.statusDescription
+            ),
+            tournament = Tournament(
+                id = 0,
+                name = updatedData.tournamentName,
+                category = Category(
+                    name = updatedData.categoryName,
+                    country = null
+                )
+            ),
+            vote = null,
+            odds = odds,
+            voting = voting
+        )
     }
 }

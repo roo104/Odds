@@ -41,3 +41,34 @@
 .matches-table tbody tr.highlight-row:hover {
   background-color: rgba(0, 255, 0, 0.3);
 }
+
+.refresh-match-button {
+  background-color: #2e7d32;
+  color: #e0e0e0;
+  border: 1px solid #2e7d32;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.refresh-match-button:hover:not(:disabled) {
+  background-color: #388e3c;
+  transform: rotate(90deg);
+}
+
+.refresh-match-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

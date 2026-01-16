@@ -18,12 +18,23 @@
   transition: background-color 0.2s;
 }
 
-.nav-button:hover {
+.nav-button:hover:not(:disabled) {
   background-color: #4a4a4a;
 }
 
-.today-button {
+.nav-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.refresh-button {
+  background-color: #2e7d32;
+  border-color: #2e7d32;
   margin-left: auto;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background-color: #388e3c;
 }
 
 .date-picker {

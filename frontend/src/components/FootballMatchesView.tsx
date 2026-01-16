@@ -5,7 +5,14 @@ import MatchesTable from './MatchesTable';
 import DateNavigation from './DateNavigation';
 import FilterControls from './FilterControls';
 import TeamDialog from './TeamDialog';
+import Toast from './Toast';
 import './FootballMatchesView.css';
+
+interface ToastMessage {
+  id: number;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
 
 function FootballMatchesView() {
   const [allMatches, setAllMatches] = useState<SofascoreEvent[]>([]);
@@ -16,22 +23,39 @@ function FootballMatchesView() {
   const [minOdds, setMinOdds] = useState(3.0);
   const [minVotePercent, setMinVotePercent] = useState(70);
   const [selectedEvent, setSelectedEvent] = useState<SofascoreEvent | null>(null);
+  const [refreshingMatchId, setRefreshingMatchId] = useState<number | null>(null);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   useEffect(() => {
     loadMatches(currentDate);
   }, [currentDate]);
 
-  const loadMatches = async (date: Date) => {
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  };
+
+  const loadMatches = async (date: Date, forceRefresh: boolean = false) => {
     setLoading(true);
     try {
       const dateStr = date.toISOString().split('T')[0];
-      const matches = await footballApi.getMatchesByDate(dateStr);
+      const matches = forceRefresh
+        ? await footballApi.refreshMatchesByDate(dateStr)
+        : await footballApi.getMatchesByDate(dateStr);
       setAllMatches(matches);
     } catch (error) {
       console.error('Failed to load matches:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRefresh = () => {
+    loadMatches(currentDate, true);
   };
 
   const parseOdds = (fractionalOdds?: string): number => {
@@ -101,6 +125,29 @@ function FootballMatchesView() {
     setSelectedEvent(event);
   };
 
+  const handleRefreshMatch = async (eventId: number) => {
+    setRefreshingMatchId(eventId);
+    try {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const updatedMatch = await footballApi.refreshSingleMatch(eventId, dateStr);
+
+      // Update the match in the allMatches array
+      setAllMatches((prevMatches) =>
+        prevMatches.map((match) =>
+          match.id === eventId ? updatedMatch : match
+        )
+      );
+
+      showToast('Match refreshed successfully', 'success');
+    } catch (error: any) {
+      console.error('Failed to refresh match:', error);
+      const errorMessage = error.message || 'Failed to refresh match';
+      showToast(errorMessage, 'error');
+    } finally {
+      setRefreshingMatchId(null);
+    }
+  };
+
   return (
     <div className="football-matches-view">
       <DateNavigation
@@ -109,6 +156,8 @@ function FootballMatchesView() {
         onPreviousDay={handlePreviousDay}
         onNextDay={handleNextDay}
         onToday={handleToday}
+        onRefresh={handleRefresh}
+        isRefreshing={loading}
       />
 
       <FilterControls
@@ -134,8 +183,10 @@ function FootballMatchesView() {
               <MatchesTable
                 matches={matches}
                 onMatchClick={handleMatchClick}
+                onRefreshMatch={handleRefreshMatch}
                 shouldHighlight={shouldHighlight}
                 parseOdds={parseOdds}
+                refreshingMatchId={refreshingMatchId}
               />
             </details>
           ))}
@@ -148,6 +199,15 @@ function FootballMatchesView() {
           onClose={() => setSelectedEvent(null)}
         />
       )}
+
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => removeToast(toast.id)}
+        />
+      ))}
     </div>
   );
 }

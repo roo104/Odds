@@ -107,12 +107,7 @@ data class Voting(
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class EventDetailsResponse(
-    val event: EventDetails? = null
-)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class EventDetails(
-    val vote: VoteData? = null
+    val event: SofascoreEvent? = null
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
