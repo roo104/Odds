@@ -38,6 +38,7 @@ class FootballMatchesView(private val sofascoreService: SofascoreService) : Vert
     private val objectMapper = ObjectMapper()
     private var currentDate: LocalDate = LocalDate.now()
     private lateinit var filterCheckbox: Checkbox
+    private lateinit var matchCriteriaCheckbox: Checkbox
 
     init {
         setSizeFull()
@@ -70,47 +71,69 @@ class FootballMatchesView(private val sofascoreService: SofascoreService) : Vert
 
         val dateNavLayout = HorizontalLayout(prevDayButton, datePicker, nextDayButton, todayButton)
         dateNavLayout.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER)
+        dateNavLayout.style.set("gap", "10px")
+        dateNavLayout.style.set("padding", "10px")
 
         filterCheckbox = Checkbox("Show only Not Started matches")
         filterCheckbox.addValueChangeListener { event ->
-            refreshMatchDisplay(event.value)
+            refreshMatchDisplay(event.value, matchCriteriaCheckbox.value)
         }
 
+        matchCriteriaCheckbox = Checkbox("Show only matches that match criteria")
+        matchCriteriaCheckbox.addValueChangeListener { event ->
+            refreshMatchDisplay(filterCheckbox.value, event.value)
+        }
+
+        val checkboxLayout = VerticalLayout(filterCheckbox, matchCriteriaCheckbox)
+        checkboxLayout.style.set("gap", "5px")
+        checkboxLayout.style.set("padding", "0")
+
         // Odds slider
-        val oddsSlider = NumberField("Min Odds for Highlight")
-        oddsSlider.value = 3.0
+        val oddsSlider = NumberField("Min Odds")
+        oddsSlider.value = 2.5
         oddsSlider.min = 1.0
         oddsSlider.max = 5.0
         oddsSlider.step = 0.1
-        oddsSlider.setWidth("200px")
+        oddsSlider.setWidth("150px")
         oddsSlider.isStepButtonsVisible = true
         oddsSlider.addValueChangeListener { event ->
             minOdds = event.value ?: 3.0
-            refreshMatchDisplay(filterCheckbox.value)
+            refreshMatchDisplay(filterCheckbox.value, matchCriteriaCheckbox.value)
         }
 
         // Vote percentage slider
-        val voteSlider = NumberField("Min Vote % for Highlight")
+        val voteSlider = NumberField("Min Vote %")
         voteSlider.value = 70.0
         voteSlider.min = 50.0
         voteSlider.max = 90.0
         voteSlider.step = 5.0
-        voteSlider.setWidth("200px")
+        voteSlider.setWidth("150px")
+        voteSlider.isStepButtonsVisible = true
         voteSlider.addValueChangeListener { event ->
             minVotePercent = event.value.toInt()
-            refreshMatchDisplay(filterCheckbox.value)
+            refreshMatchDisplay(filterCheckbox.value, matchCriteriaCheckbox.value)
         }
 
-        val filterLayout = HorizontalLayout(filterCheckbox, oddsSlider, voteSlider)
-        filterLayout.setWidthFull()
+        val slidersLayout = HorizontalLayout(oddsSlider, voteSlider)
+        slidersLayout.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.END)
+        slidersLayout.style.set("gap", "15px")
 
         // Import JSON button
         val importButton = Button("Import JSON") {
             showImportDialog()
         }
+        importButton.style.set("margin-left", "auto")
 
-        val topLayout = VerticalLayout(dateNavLayout, HorizontalLayout(filterLayout, importButton))
+        val filterLayout = HorizontalLayout(checkboxLayout, slidersLayout, importButton)
+        filterLayout.setWidthFull()
+        filterLayout.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER)
+        filterLayout.style.set("gap", "20px")
+        filterLayout.style.set("padding", "10px")
+
+        val topLayout = VerticalLayout(dateNavLayout, filterLayout)
         topLayout.setWidthFull()
+        topLayout.style.set("gap", "5px")
+        topLayout.style.set("padding", "10px")
 
         add(topLayout)
         add(contentLayout)
@@ -123,8 +146,151 @@ class FootballMatchesView(private val sofascoreService: SofascoreService) : Vert
         element.executeJs(
             """
             document.documentElement.setAttribute('theme', 'dark');
+            document.body.setAttribute('theme', 'dark');
             const style = document.createElement('style');
             style.textContent = `
+                html, body {
+                    background-color: #1e1e1e !important;
+                    color: #e0e0e0 !important;
+                }
+                * {
+                    color: #e0e0e0 !important;
+                }
+                label, span, div {
+                    color: #e0e0e0 !important;
+                }
+                vaadin-vertical-layout, vaadin-horizontal-layout {
+                    background-color: #1e1e1e !important;
+                }
+                vaadin-grid {
+                    background-color: #2d2d2d !important;
+                }
+                vaadin-grid::part(header-cell) {
+                    background-color: #3a3a3a !important;
+                    color: #e0e0e0 !important;
+                }
+                vaadin-grid::part(cell) {
+                    background-color: #2d2d2d !important;
+                    color: #e0e0e0 !important;
+                }
+                vaadin-grid::part(row) {
+                    background-color: #2d2d2d !important;
+                }
+                vaadin-grid-cell-content {
+                    color: #e0e0e0 !important;
+                }
+                vaadin-details {
+                    background-color: #1e1e1e !important;
+                }
+                vaadin-details-summary {
+                    background-color: #2d2d2d !important;
+                }
+                vaadin-details-summary h3 {
+                    color: #e0e0e0 !important;
+                }
+                vaadin-details::part(summary) {
+                    background-color: #2d2d2d !important;
+                }
+                vaadin-details::part(content) {
+                    background-color: #1e1e1e !important;
+                }
+                h3, h4 {
+                    color: #e0e0e0 !important;
+                }
+                vaadin-button {
+                    background-color: #3a3a3a !important;
+                    color: #e0e0e0 !important;
+                    border: 1px solid #555 !important;
+                }
+                vaadin-button::part(label) {
+                    color: #e0e0e0 !important;
+                }
+                vaadin-button:hover {
+                    background-color: #4a4a4a !important;
+                }
+                vaadin-date-picker,
+                vaadin-number-field,
+                vaadin-text-area {
+                    background-color: #2d2d2d !important;
+                }
+                vaadin-date-picker::part(input-field),
+                vaadin-number-field::part(input-field),
+                vaadin-text-area::part(input-field) {
+                    background-color: #2d2d2d !important;
+                    color: #e0e0e0 !important;
+                }
+                vaadin-date-picker::part(label),
+                vaadin-number-field::part(label),
+                vaadin-text-area::part(label) {
+                    color: #b0b0b0 !important;
+                }
+                vaadin-date-picker input,
+                vaadin-number-field input,
+                vaadin-text-area textarea {
+                    background-color: #2d2d2d !important;
+                    color: #e0e0e0 !important;
+                }
+                vaadin-input-container {
+                    background-color: #2d2d2d !important;
+                }
+                vaadin-date-picker-overlay {
+                    background-color: #2d2d2d !important;
+                }
+                vaadin-date-picker-overlay::part(overlay) {
+                    background-color: #2d2d2d !important;
+                }
+                vaadin-date-picker-overlay-content {
+                    background-color: #2d2d2d !important;
+                }
+                vaadin-month-calendar {
+                    background-color: #2d2d2d !important;
+                    color: #e0e0e0 !important;
+                }
+                vaadin-month-calendar::part(month-header) {
+                    background-color: #3a3a3a !important;
+                    color: #e0e0e0 !important;
+                }
+                vaadin-month-calendar::part(date) {
+                    color: #e0e0e0 !important;
+                }
+                vaadin-month-calendar::part(today) {
+                    color: #4fc3f7 !important;
+                }
+                vaadin-month-calendar::part(weekday) {
+                    color: #b0b0b0 !important;
+                }
+                vaadin-date-picker-year-scroller {
+                    background-color: #2d2d2d !important;
+                }
+                vaadin-date-picker-year {
+                    background-color: #2d2d2d !important;
+                    color: #e0e0e0 !important;
+                }
+                vaadin-date-picker-year::part(year-number) {
+                    color: #e0e0e0 !important;
+                }
+                vaadin-date-picker-year div {
+                    color: #e0e0e0 !important;
+                }
+                vaadin-infinite-scroller div {
+                    color: #e0e0e0 !important;
+                }
+                vaadin-checkbox::part(label) {
+                    color: #e0e0e0 !important;
+                }
+                vaadin-dialog-overlay {
+                    background-color: rgba(30, 30, 30, 0.95) !important;
+                }
+                vaadin-dialog-overlay::part(overlay) {
+                    background-color: #2d2d2d !important;
+                }
+                vaadin-dialog-overlay::part(content) {
+                    background-color: #2d2d2d !important;
+                }
+                vaadin-dialog::part(header) {
+                    background-color: #3a3a3a !important;
+                    color: #e0e0e0 !important;
+                }
                 vaadin-grid::part(highlight-green-row) {
                     background-color: rgba(0, 255, 0, 0.2) !important;
                 }
@@ -375,18 +541,22 @@ class FootballMatchesView(private val sofascoreService: SofascoreService) : Vert
     private fun loadMatches(date: LocalDate = LocalDate.now()) {
         runBlocking {
             allMatches = sofascoreService.getFootballMatchesByDate(date)
-            refreshMatchDisplay(filterCheckbox.value)
-            logger.info("Loaded and displayed ${allMatches.size} matches for date: $date (filterNotStarted=${filterCheckbox.value})")
+            refreshMatchDisplay(filterCheckbox.value, matchCriteriaCheckbox.value)
+            logger.info("Loaded and displayed ${allMatches.size} matches for date: $date (filterNotStarted=${filterCheckbox.value}, filterMatchCriteria=${matchCriteriaCheckbox.value})")
         }
     }
 
-    private fun refreshMatchDisplay(filterNotStarted: Boolean) {
+    private fun refreshMatchDisplay(filterNotStarted: Boolean, filterMatchCriteria: Boolean) {
         contentLayout.removeAll()
 
-        val matchesToDisplay = if (filterNotStarted) {
-            allMatches.filter { it.status.description == "Not started" }
-        } else {
-            allMatches
+        var matchesToDisplay = allMatches
+
+        if (filterNotStarted) {
+            matchesToDisplay = matchesToDisplay.filter { it.status.description == "Not started" }
+        }
+
+        if (filterMatchCriteria) {
+            matchesToDisplay = matchesToDisplay.filter { shouldHighlight(it) }
         }
 
         val groupedByCategory = matchesToDisplay.groupBy { it.tournament.category.name }
@@ -423,7 +593,7 @@ class FootballMatchesView(private val sofascoreService: SofascoreService) : Vert
                 val response = objectMapper.readValue(jsonText, SofascoreEventsResponse::class.java)
 
                 allMatches = response.events
-                refreshMatchDisplay(false)
+                refreshMatchDisplay(false, false)
 
                 Notification.show(
                     "Successfully imported ${response.events.size} matches",
