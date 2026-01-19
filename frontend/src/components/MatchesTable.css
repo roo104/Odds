@@ -72,3 +72,9 @@
     transform: rotate(360deg);
   }
 }
+
+.last-updated-cell {
+  font-size: 12px;
+  color: #b0b0b0 !important;
+  white-space: nowrap;
+}

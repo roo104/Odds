@@ -28,6 +28,23 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
     return decimal > 0 ? decimal.toFixed(2) : '-';
   };
 
+  const formatLastUpdated = (timestamp?: number): string => {
+    if (!timestamp) return '-';
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
+
   const handleRefreshClick = (e: React.MouseEvent, eventId: number) => {
     e.stopPropagation();
     onRefreshMatch(eventId);
@@ -50,6 +67,7 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
             <th>Away Vote %</th>
             <th>Status</th>
             <th>Tournament</th>
+            <th>Last Updated</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -74,6 +92,9 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
               <td>{match.voting?.away ? `${match.voting.away}%` : '-'}</td>
               <td>{match.status.description}</td>
               <td>{match.tournament.name}</td>
+              <td className="last-updated-cell" title={match.lastUpdated ? new Date(match.lastUpdated * 1000).toLocaleString() : ''}>
+                {formatLastUpdated(match.lastUpdated)}
+              </td>
               <td>
                 <button
                   className="refresh-match-button"

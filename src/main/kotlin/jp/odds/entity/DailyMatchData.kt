@@ -1,6 +1,7 @@
 package jp.odds.entity
 
 import jakarta.persistence.*
+import java.time.Instant
 import java.time.LocalDate
 
 @Entity
@@ -61,5 +62,8 @@ data class DailyMatchData(
     val statusType: String = "",
 
     @Column(name = "status_description", nullable = false)
-    val statusDescription: String = ""
+    val statusDescription: String = "",
+
+    @Column(name = "last_updated", nullable = true)
+    val lastUpdated: Instant? = null
 )

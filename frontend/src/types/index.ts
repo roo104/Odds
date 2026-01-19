@@ -11,6 +11,7 @@ export interface SofascoreEvent {
   voting?: Voting;
   homeFormScore?: number;
   awayFormScore?: number;
+  lastUpdated?: number;
 }
 
 export interface Team {

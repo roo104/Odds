@@ -67,11 +67,7 @@ class SofascoreService(
                 event.voting = fetchVotingForEvent(event.id)
             }
 
-            // Save to database (delete old data if refreshing)
-            if (forceRefresh) {
-                dailyMatchDataRepository.deleteByMatchDate(date)
-                logger.info("Deleted old data for $dateStr before refresh")
-            }
+            // Save to database (will update existing records or insert new ones)
             saveMatchesToDatabase(date, response.events)
 
             response.events
@@ -127,14 +123,23 @@ class SofascoreService(
                         draw = data.votingDraw,
                         away = data.votingAway
                     )
-                } else null
+                } else null,
+                lastUpdated = data.lastUpdated?.epochSecond ?: 0
             )
         }
     }
 
     private fun saveMatchesToDatabase(matchDate: LocalDate, events: List<SofascoreEvent>) {
+        val now = java.time.Instant.now()
+
+        // Load existing records to preserve IDs for updates
+        val existingRecords = dailyMatchDataRepository.findByMatchDate(matchDate)
+            .associateBy { it.eventId }
+
         val entities = events.map { event ->
+            val existing = existingRecords[event.id]
             DailyMatchData(
+                id = existing?.id, // Preserve existing ID for update, null for insert
                 matchDate = matchDate,
                 eventId = event.id,
                 startTimestamp = event.startTimestamp,
@@ -151,7 +156,8 @@ class SofascoreService(
                 votingDraw = event.voting?.draw,
                 votingAway = event.voting?.away,
                 statusType = event.status.type,
-                statusDescription = event.status.description
+                statusDescription = event.status.description,
+                lastUpdated = now
             )
         }
 
@@ -279,13 +285,15 @@ class SofascoreService(
         }
 
         // Update in database with fresh data
+        val now = java.time.Instant.now()
         val updatedData = existingData.copy(
             oddsHome = odds?.home,
             oddsDraw = odds?.draw,
             oddsAway = odds?.away,
             votingHome = voting?.home,
             votingDraw = voting?.draw,
-            votingAway = voting?.away
+            votingAway = voting?.away,
+            lastUpdated = now
         )
         dailyMatchDataRepository.save(updatedData)
         logger.info("Updated odds and voting for match $eventId in database")
@@ -320,7 +328,8 @@ class SofascoreService(
             ),
             vote = null,
             odds = odds,
-            voting = voting
+            voting = voting,
+            lastUpdated = now.epochSecond
         )
     }
 }

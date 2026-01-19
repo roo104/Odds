@@ -21,7 +21,8 @@ data class SofascoreEvent(
     var odds: Odds? = null,
     var voting: Voting? = null,
     var homeFormScore: Int? = null,
-    var awayFormScore: Int? = null
+    var awayFormScore: Int? = null,
+    var lastUpdated: Long? = null
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
