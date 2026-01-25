@@ -58,6 +58,9 @@ data class DailyMatchData(
     @Column(name = "voting_away")
     val votingAway: Int? = null,
 
+    @Column(name = "voting_total")
+    val votingTotal: Int? = null,
+
     @Column(name = "status_type", nullable = false)
     val statusType: String = "",
 

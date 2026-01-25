@@ -77,9 +77,9 @@ function FootballMatchesView() {
     const { voting, odds } = event;
     if (!voting || !odds) return false;
 
-    if ((voting.home || 0) > minVotePercent && parseOdds(odds.home) > minOdds) return true;
-    if ((voting.draw || 0) > minVotePercent && parseOdds(odds.draw) > minOdds) return true;
-    if ((voting.away || 0) > minVotePercent && parseOdds(odds.away) > minOdds) return true;
+    if ((voting.home || 0) >= minVotePercent && parseOdds(odds.home) >= minOdds) return true;
+    if ((voting.draw || 0) >= minVotePercent && parseOdds(odds.draw) >= minOdds) return true;
+    if ((voting.away || 0) >= minVotePercent && parseOdds(odds.away) >= minOdds) return true;
 
     return false;
   };

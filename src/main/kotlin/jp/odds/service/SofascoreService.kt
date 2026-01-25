@@ -61,10 +61,12 @@ class SofascoreService(
             logger.info("Successfully fetched ${response.events.size} matches")
 
             // Fetch odds and voting for each event with delays (sequentially to avoid rate limiting)
+            val now = java.time.Instant.now()
             response.events.forEach { event ->
                 kotlinx.coroutines.delay(500L) // 500ms delay between each event
                 event.odds = fetchOddsForEvent(event.id)
                 event.voting = fetchVotingForEvent(event.id)
+                event.lastUpdated = now.epochSecond
             }
 
             // Save to database (will update existing records or insert new ones)
@@ -121,7 +123,8 @@ class SofascoreService(
                     Voting(
                         home = data.votingHome,
                         draw = data.votingDraw,
-                        away = data.votingAway
+                        away = data.votingAway,
+                        total = data.votingTotal
                     )
                 } else null,
                 lastUpdated = data.lastUpdated?.epochSecond ?: 0
@@ -155,6 +158,7 @@ class SofascoreService(
                 votingHome = event.voting?.home,
                 votingDraw = event.voting?.draw,
                 votingAway = event.voting?.away,
+                votingTotal = event.voting?.total,
                 statusType = event.status.type,
                 statusDescription = event.status.description,
                 lastUpdated = now
@@ -294,6 +298,7 @@ class SofascoreService(
             votingHome = voting?.home,
             votingDraw = voting?.draw,
             votingAway = voting?.away,
+            votingTotal = voting?.total,
             lastUpdated = now
         )
         dailyMatchDataRepository.save(updatedData)
