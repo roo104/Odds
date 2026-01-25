@@ -103,7 +103,8 @@ data class VoteData(
 data class Voting(
     val home: Int? = null,
     val draw: Int? = null,
-    val away: Int? = null
+    val away: Int? = null,
+    val total: Int? = null
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)

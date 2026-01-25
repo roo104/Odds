@@ -85,6 +85,31 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
           </button>
         </div>
 
+        {event.voting && (
+          <div className="voting-section">
+            <h3>Voting Results {event.voting.total ? `(${event.voting.total})` : ''}</h3>
+            <div className="voting-labels-row">
+              <span className="voting-label-top">{event.homeTeam.name} ({event.voting.home || 0}%)</span>
+              <span className="voting-label-top">Draw ({event.voting.draw || 0}%)</span>
+              <span className="voting-label-top">{event.awayTeam.name} ({event.voting.away || 0}%)</span>
+            </div>
+            <div className="voting-bar-container">
+              <div
+                className="voting-bar home-vote"
+                style={{ width: `${event.voting.home || 0}%` }}
+              />
+              <div
+                className="voting-bar draw-vote"
+                style={{ width: `${event.voting.draw || 0}%` }}
+              />
+              <div
+                className="voting-bar away-vote"
+                style={{ width: `${event.voting.away || 0}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="loading">Loading team events...</div>
         ) : (

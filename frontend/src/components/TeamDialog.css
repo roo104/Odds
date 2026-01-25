@@ -99,3 +99,70 @@
 .team-events-table tbody tr.result-draw {
   background-color: rgba(255, 255, 0, 0.2);
 }
+
+.voting-section {
+  padding: 20px;
+  background-color: #2d2d2d;
+  border-bottom: 1px solid #444;
+}
+
+.voting-section h3 {
+  color: #e0e0e0;
+  margin: 0 0 15px 0;
+  font-size: 16px;
+}
+
+.voting-labels-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.voting-label-top {
+  color: #e0e0e0;
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.voting-label-top:first-child {
+  text-align: left;
+}
+
+.voting-label-top:nth-child(2) {
+  text-align: center;
+}
+
+.voting-label-top:last-child {
+  text-align: right;
+}
+
+.voting-bar-container {
+  display: flex;
+  height: 40px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.voting-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  transition: width 0.3s ease;
+  min-width: 40px;
+}
+
+.voting-bar.home-vote {
+  background-color: #4a90e2;
+}
+
+.voting-bar.draw-vote {
+  background-color: #ffa500;
+}
+
+.voting-bar.away-vote {
+  background-color: #e24a4a;
+}

@@ -219,7 +219,8 @@ class SofascoreService(
                     Voting(
                         home = ((vote.vote1 ?: 0) * 100 / total),
                         draw = ((vote.voteX ?: 0) * 100 / total),
-                        away = ((vote.vote2 ?: 0) * 100 / total)
+                        away = ((vote.vote2 ?: 0) * 100 / total),
+                        total = total
                     )
                 } else {
                     null

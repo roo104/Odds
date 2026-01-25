@@ -55,4 +55,5 @@ export interface Voting {
   home?: number;
   draw?: number;
   away?: number;
+  total?: number;
 }
