@@ -65,7 +65,8 @@ function FootballMatchesView() {
       if (parts.length === 2) {
         const numerator = parseFloat(parts[0]);
         const denominator = parseFloat(parts[1]);
-        return (numerator / denominator) + 1.0;
+        const result = (numerator / denominator) + 1.0;
+        return Math.round(result * 100) / 100; // Round to 2 decimal places
       }
     } catch (e) {
       return 0;
@@ -77,9 +78,11 @@ function FootballMatchesView() {
     const { voting, odds } = event;
     if (!voting || !odds) return false;
 
-    if ((voting.home || 0) >= minVotePercent && parseOdds(odds.home) >= minOdds) return true;
-    if ((voting.draw || 0) >= minVotePercent && parseOdds(odds.draw) >= minOdds) return true;
-    if ((voting.away || 0) >= minVotePercent && parseOdds(odds.away) >= minOdds) return true;
+    const roundedMinOdds = Math.round(minOdds * 100) / 100;
+
+    if ((voting.home || 0) >= minVotePercent && parseOdds(odds.home) >= roundedMinOdds) return true;
+    if ((voting.draw || 0) >= minVotePercent && parseOdds(odds.draw) >= roundedMinOdds) return true;
+    if ((voting.away || 0) >= minVotePercent && parseOdds(odds.away) >= roundedMinOdds) return true;
 
     return false;
   };

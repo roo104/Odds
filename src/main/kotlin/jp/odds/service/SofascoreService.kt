@@ -270,6 +270,22 @@ class SofascoreService(
         }
     }
 
+    private suspend fun fetchEventDetails(eventId: Long): SofascoreEvent? {
+        return try {
+            val response = webClient
+                .get()
+                .uri("/event/$eventId")
+                .retrieve()
+                .awaitBody<EventDetailsResponse>()
+
+            logger.debug("Fetched event details for $eventId: status=${response.event?.status?.description}")
+            response.event
+        } catch (e: Exception) {
+            logger.warn("Could not fetch event details for $eventId: ${e.message}", e)
+            null
+        }
+    }
+
     suspend fun refreshSingleMatch(eventId: Long, matchDate: LocalDate): SofascoreEvent {
         logger.info("Refreshing single match with eventId: $eventId")
 
@@ -278,15 +294,16 @@ class SofascoreService(
             .find { it.eventId == eventId }
             ?: throw IllegalArgumentException("Match $eventId not found in database for date $matchDate")
 
-        // Just fetch fresh odds and voting data for this event
+        // Fetch fresh event details, odds and voting data
         kotlinx.coroutines.delay(500L)
+        val eventDetails = fetchEventDetails(eventId)
         val odds = fetchOddsForEvent(eventId)
         val voting = fetchVotingForEvent(eventId)
 
         // Throw error if we couldn't fetch any fresh data
-        if (odds == null && voting == null) {
-            logger.warn("No odds or voting data fetched for match $eventId")
-            throw RuntimeException("Could not fetch fresh odds or voting data for match $eventId")
+        if (odds == null && voting == null && eventDetails == null) {
+            logger.warn("No data fetched for match $eventId")
+            throw RuntimeException("Could not fetch fresh data for match $eventId")
         }
 
         // Update in database with fresh data
@@ -299,6 +316,8 @@ class SofascoreService(
             votingDraw = voting?.draw,
             votingAway = voting?.away,
             votingTotal = voting?.total,
+            statusType = eventDetails?.status?.type ?: existingData.statusType,
+            statusDescription = eventDetails?.status?.description ?: existingData.statusDescription,
             lastUpdated = now
         )
         dailyMatchDataRepository.save(updatedData)
@@ -318,8 +337,8 @@ class SofascoreService(
                 name = updatedData.awayTeamName,
                 country = null
             ),
-            homeScore = null,
-            awayScore = null,
+            homeScore = eventDetails?.homeScore,
+            awayScore = eventDetails?.awayScore,
             status = Status(
                 type = updatedData.statusType,
                 description = updatedData.statusDescription
