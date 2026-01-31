@@ -13,14 +13,12 @@ interface MatchesTableProps {
 function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, parseOdds, refreshingMatchId }: MatchesTableProps) {
   const formatDateTime = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
   };
 
   const formatOdds = (fractionalOdds?: string): string => {
@@ -93,7 +91,7 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
               <td>{match.voting?.away ? `${match.voting.away}%` : '-'}</td>
               <td>{match.status.description}</td>
               <td>{match.tournament.name}</td>
-              <td className="last-updated-cell" title={match.lastUpdated ? new Date(match.lastUpdated * 1000).toLocaleString() : ''}>
+              <td className="last-updated-cell" title={match.lastUpdated ? formatDateTime(match.lastUpdated) : ''}>
                 {formatLastUpdated(match.lastUpdated)}
               </td>
               <td>

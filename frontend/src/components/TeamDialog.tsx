@@ -51,11 +51,10 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
 
   const formatDateTime = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   const getMatchResult = (match: SofascoreEvent, teamId: number): 'win' | 'loss' | 'draw' | null => {
