@@ -49,6 +49,20 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
     onRefreshMatch(eventId);
   };
 
+  const getHighestVote = (match: SofascoreEvent): 'home' | 'draw' | 'away' | null => {
+    if (!match.voting) return null;
+    const homeVote = match.voting.home ?? 0;
+    const drawVote = match.voting.draw ?? 0;
+    const awayVote = match.voting.away ?? 0;
+    
+    if (homeVote === 0 && drawVote === 0 && awayVote === 0) return null;
+    
+    const maxVote = Math.max(homeVote, drawVote, awayVote);
+    if (homeVote === maxVote) return 'home';
+    if (drawVote === maxVote) return 'draw';
+    return 'away';
+  };
+
   return (
     <div className="matches-table-container">
       <table className="matches-table">
@@ -71,41 +85,57 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
           </tr>
         </thead>
         <tbody>
-          {matches.map((match) => (
-            <tr
-              key={match.id}
-              onClick={() => onMatchClick(match)}
-              className={shouldHighlight(match) ? 'highlight-row' : ''}
-            >
-              <td>{formatDateTime(match.startTimestamp)}</td>
-              <td>{match.homeTeam.name}</td>
-              <td>{match.awayTeam.name}</td>
-              <td>
-                {match.homeScore?.current ?? '-'} - {match.awayScore?.current ?? '-'}
-              </td>
-              <td>{formatOdds(match.odds?.home)}</td>
-              <td>{formatOdds(match.odds?.draw)}</td>
-              <td>{formatOdds(match.odds?.away)}</td>
-              <td>{match.voting?.home ? `${match.voting.home}%` : '-'}</td>
-              <td>{match.voting?.draw ? `${match.voting.draw}%` : '-'}</td>
-              <td>{match.voting?.away ? `${match.voting.away}%` : '-'}</td>
-              <td>{match.status.description}</td>
-              <td>{match.tournament.name}</td>
-              <td className="last-updated-cell" title={match.lastUpdated ? formatDateTime(match.lastUpdated) : ''}>
-                {formatLastUpdated(match.lastUpdated)}
-              </td>
-              <td>
-                <button
-                  className="refresh-match-button"
-                  onClick={(e) => handleRefreshClick(e, match.id)}
-                  disabled={refreshingMatchId === match.id}
-                  title="Refresh this match"
-                >
-                  {refreshingMatchId === match.id ? '↻' : '⟳'}
-                </button>
-              </td>
-            </tr>
-          ))}
+          {matches.map((match) => {
+            const highestVote = getHighestVote(match);
+            
+            return (
+              <tr
+                key={match.id}
+                onClick={() => onMatchClick(match)}
+                className={shouldHighlight(match) ? 'highlight-row' : ''}
+              >
+                <td>{formatDateTime(match.startTimestamp)}</td>
+                <td>{match.homeTeam.name}</td>
+                <td>{match.awayTeam.name}</td>
+                <td>
+                  {match.homeScore?.current ?? '-'} - {match.awayScore?.current ?? '-'}
+                </td>
+                <td className={highestVote === 'home' ? 'highest-value' : ''}>
+                  {formatOdds(match.odds?.home)}
+                </td>
+                <td className={highestVote === 'draw' ? 'highest-value' : ''}>
+                  {formatOdds(match.odds?.draw)}
+                </td>
+                <td className={highestVote === 'away' ? 'highest-value' : ''}>
+                  {formatOdds(match.odds?.away)}
+                </td>
+                <td className={highestVote === 'home' ? 'highest-value' : ''}>
+                  {match.voting?.home ? `${match.voting.home}%` : '-'}
+                </td>
+                <td className={highestVote === 'draw' ? 'highest-value' : ''}>
+                  {match.voting?.draw ? `${match.voting.draw}%` : '-'}
+                </td>
+                <td className={highestVote === 'away' ? 'highest-value' : ''}>
+                  {match.voting?.away ? `${match.voting.away}%` : '-'}
+                </td>
+                <td>{match.status.description}</td>
+                <td>{match.tournament.name}</td>
+                <td className="last-updated-cell" title={match.lastUpdated ? formatDateTime(match.lastUpdated) : ''}>
+                  {formatLastUpdated(match.lastUpdated)}
+                </td>
+                <td>
+                  <button
+                    className="refresh-match-button"
+                    onClick={(e) => handleRefreshClick(e, match.id)}
+                    disabled={refreshingMatchId === match.id}
+                    title="Refresh this match"
+                  >
+                    {refreshingMatchId === match.id ? '↻' : '⟳'}
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

@@ -3,12 +3,15 @@ package jp.odds.service
 import jp.odds.dto.*
 import jp.odds.entity.DailyMatchData
 import jp.odds.repository.DailyMatchDataRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
 import java.text.Normalizer
+import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -47,7 +50,7 @@ class SofascoreService(
         val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         // Check if data for this date already exists in database
-        if (!forceRefresh && dailyMatchDataRepository.existsByMatchDate(date)) {
+        if (!forceRefresh && withContext(Dispatchers.IO) { dailyMatchDataRepository.existsByMatchDate(date) }) {
             logger.info("Loading matches for $dateStr from database")
             return loadMatchesFromDatabase(date)
         }
@@ -68,7 +71,7 @@ class SofascoreService(
             logger.info("Filtered to ${filteredEvents.size} top league matches for $dateStr")
 
             // Fetch odds and voting for each event with delays (sequentially to avoid rate limiting)
-            val now = java.time.Instant.now()
+            val now = Instant.now()
             filteredEvents.forEach { event ->
                 kotlinx.coroutines.delay(500L) // 500ms delay between each event
                 event.odds = fetchOddsForEvent(event.id)
@@ -86,9 +89,15 @@ class SofascoreService(
         }
     }
 
-    private fun loadMatchesFromDatabase(matchDate: LocalDate): List<SofascoreEvent> {
-        val dailyData = dailyMatchDataRepository.findByMatchDate(matchDate)
-        logger.info("Loaded ${dailyData.size} matches from database for date $matchDate")
+    private suspend fun loadMatchesFromDatabase(matchDate: LocalDate): List<SofascoreEvent> {
+        // Convert LocalDate to timestamp range (start of day to end of day)
+        val startOfDay = matchDate.atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond()
+        val endOfDay = matchDate.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond()
+
+        val dailyData = withContext(Dispatchers.IO) {
+            dailyMatchDataRepository.findByStartTimestampBetween(startOfDay, endOfDay)
+        }
+        logger.info("Loaded ${dailyData.size} matches from database for date $matchDate (timestamp range: $startOfDay - $endOfDay)")
 
         val events = dailyData.map { data ->
             SofascoreEvent(
@@ -141,15 +150,27 @@ class SofascoreService(
         return filterEventsByTopLeagues(events)
     }
 
-    private fun saveMatchesToDatabase(matchDate: LocalDate, events: List<SofascoreEvent>) {
-        val now = java.time.Instant.now()
+    private suspend fun saveMatchesToDatabase(matchDate: LocalDate, events: List<SofascoreEvent>) {
+        val now = Instant.now()
 
-        // Load existing records to preserve IDs for updates
-        val existingRecords = dailyMatchDataRepository.findByMatchDate(matchDate)
-            .associateBy { it.eventId }
+        // Load existing records to preserve IDs for updates, keyed by event_id.
+        val existingRecords = if (events.isNotEmpty()) {
+            withContext(Dispatchers.IO) {
+                dailyMatchDataRepository.findByEventIdIn(events.map { it.id })
+                    .associateBy { it.eventId }
+            }
+        } else {
+            emptyMap()
+        }
 
-        val entities = events.map { event ->
+        val entities = events.mapNotNull { event ->
             val existing = existingRecords[event.id]
+            if (existing != null && existing.matchDate.isAfter(matchDate)) {
+                logger.info(
+                    "Skipping update for event ${event.id} on $matchDate; newer match_date exists: ${existing.matchDate}"
+                )
+                return@mapNotNull null
+            }
             DailyMatchData(
                 id = existing?.id, // Preserve existing ID for update, null for insert
                 matchDate = matchDate,
@@ -177,7 +198,9 @@ class SofascoreService(
             )
         }
 
-        dailyMatchDataRepository.saveAll(entities)
+        withContext(Dispatchers.IO) {
+            dailyMatchDataRepository.saveAll(entities)
+        }
         logger.info("Saved ${entities.size} matches to database for date $matchDate")
     }
 
@@ -265,7 +288,7 @@ class SofascoreService(
             "northern ireland" to setOf("premiership", "irish cup"),
             "norway" to setOf("eliteserien", "nm cupen"),
             "poland" to setOf("ekstraklasa", "polish cup"),
-            "portugal" to setOf("primeira liga", "taca de portugal"),
+            "portugal" to setOf("primeira liga", "liga portugal betclic", "taca de portugal"),
             "romania" to setOf("liga i", "romanian cup"),
             "russia" to setOf("premier league", "russian cup"),
             "san marino" to setOf("campionato sammarinese", "coppa titano"),
@@ -327,7 +350,7 @@ class SofascoreService(
                     draw = choices.find { it.name == "X" }?.fractionalValue,
                     away = choices.find { it.name == "2" }?.fractionalValue
                 )
-                logger.debug("Extracted odds for event $eventId: $odds")
+                logger.debug("Extracted odds for event {}: {}", eventId, odds)
                 odds
             }
         } catch (e: Exception) {
@@ -409,7 +432,7 @@ class SofascoreService(
 
             logger.debug("Fetched event details for $eventId: status=${response.event?.status?.description}")
             response.event
-        } catch (e: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
+        } catch (_: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
             logger.debug("Event $eventId not found (404)")
             null
         } catch (e: Exception) {
@@ -418,13 +441,13 @@ class SofascoreService(
         }
     }
 
-    suspend fun refreshSingleMatch(eventId: Long, matchDate: LocalDate): SofascoreEvent {
+    suspend fun refreshSingleMatch(eventId: Long): SofascoreEvent {
         logger.info("Refreshing single match with eventId: $eventId")
 
         // Find the existing match in database to get basic info
-        val existingData = dailyMatchDataRepository.findByMatchDate(matchDate)
-            .find { it.eventId == eventId }
-            ?: throw IllegalArgumentException("Match $eventId not found in database for date $matchDate")
+        val existingData = withContext(Dispatchers.IO) {
+            dailyMatchDataRepository.findByEventId(eventId)
+        } ?: throw IllegalArgumentException("Match $eventId not found in database")
 
         // Fetch fresh event details, odds and voting data
         kotlinx.coroutines.delay(500L)
@@ -439,7 +462,7 @@ class SofascoreService(
         }
 
         // Update in database with fresh data
-        val now = java.time.Instant.now()
+        val now = Instant.now()
         val tournamentIdFixes = mapOf<Long, Long>(
             33L to 23L  // Tournament 33 (volleyball) -> Tournament 23 (Serie A)
         )
@@ -469,7 +492,9 @@ class SofascoreService(
             statusDescription = eventDetails?.status?.description ?: existingData.statusDescription,
             lastUpdated = now
         )
-        dailyMatchDataRepository.save(updatedData)
+        withContext(Dispatchers.IO) {
+            dailyMatchDataRepository.save(updatedData)
+        }
         logger.info("Updated match $eventId - tournamentId: ${updatedData.tournamentId}, tournamentName: ${updatedData.tournamentName}")
 
         // Try to fetch and log standings only if we got fresh event details with tournament info
@@ -480,7 +505,7 @@ class SofascoreService(
                     val currentSeason = seasonsResponse.seasons[0]
 
                     // Skip if season name indicates non-football sport (volleyball, basketball, etc.)
-                    val seasonName = currentSeason.name ?: ""
+                    val seasonName = currentSeason.name
                     if (seasonName.contains("FIVB", ignoreCase = true) ||
                         seasonName.contains("Volleyball", ignoreCase = true) ||
                         seasonName.contains("Basketball", ignoreCase = true) ||
@@ -551,7 +576,7 @@ class SofascoreService(
 
             logger.info("Fetched seasons for tournament $tournamentId: ${response.seasons?.size} seasons")
             response
-        } catch (e: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
+        } catch (_: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
             logger.debug("Tournament $tournamentId not found (404)")
             null
         } catch (e: Exception) {
@@ -570,69 +595,12 @@ class SofascoreService(
 
             logger.info("Fetched standings for tournament $tournamentId, season $seasonId: ${response.standings?.size} groups")
             response
-        } catch (e: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
+        } catch (_: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
             logger.debug("Standings not found for tournament $tournamentId, season $seasonId (404)")
             null
         } catch (e: Exception) {
             logger.warn("Could not fetch standings for tournament $tournamentId, season $seasonId: ${e.message}")
             null
         }
-    }
-
-    suspend fun fixAllTournamentData(): Map<String, Any> {
-        logger.info("Starting to fix all tournament data")
-        val allRecords = dailyMatchDataRepository.findAll()
-        var updated = 0
-        var failed = 0
-
-        allRecords.forEach { record ->
-            try {
-                kotlinx.coroutines.delay(500L) // Rate limiting
-                val eventDetails = fetchEventDetails(record.eventId)
-                if (eventDetails != null) {
-                    val updatedRecord = record.copy(
-                        tournamentId = eventDetails.tournament.id,
-                        tournamentName = eventDetails.tournament.name,
-                        categoryName = eventDetails.tournament.category.name
-                    )
-                    dailyMatchDataRepository.save(updatedRecord)
-                    logger.info("Fixed record for event ${record.eventId}: ${eventDetails.tournament.name} (ID: ${eventDetails.tournament.id})")
-                    updated++
-                } else {
-                    logger.warn("Could not fetch details for event ${record.eventId}")
-                    failed++
-                }
-            } catch (e: Exception) {
-                logger.error("Error fixing record for event ${record.eventId}: ${e.message}")
-                failed++
-            }
-        }
-
-        logger.info("Finished fixing tournament data: $updated updated, $failed failed")
-        return mapOf("updated" to updated, "failed" to failed, "total" to allRecords.count())
-    }
-
-    fun fixKnownTournamentIds(): Map<String, Any> {
-        logger.info("Starting to fix known tournament ID mismatches")
-        val allRecords = dailyMatchDataRepository.findAll()
-        var updated = 0
-
-        // Map of incorrect tournament IDs to correct ones for known leagues
-        val tournamentIdFixes = mapOf<Long, Long>(
-            33L to 23L  // Tournament 33 (volleyball) -> Tournament 23 (Serie A)
-        )
-
-        allRecords.forEach { record ->
-            if (record.tournamentName == "Serie A" && record.tournamentId in tournamentIdFixes.keys) {
-                val correctId = tournamentIdFixes[record.tournamentId]!!
-                val updatedRecord = record.copy(tournamentId = correctId)
-                dailyMatchDataRepository.save(updatedRecord)
-                logger.info("Fixed Serie A record for event ${record.eventId}: ${record.tournamentId} -> $correctId")
-                updated++
-            }
-        }
-
-        logger.info("Finished fixing known tournament IDs: $updated updated")
-        return mapOf("updated" to updated, "total" to allRecords.count())
     }
 }

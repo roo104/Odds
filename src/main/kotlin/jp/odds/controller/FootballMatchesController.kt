@@ -12,20 +12,13 @@ import java.time.LocalDate
 @RestController
 @RequestMapping("/api/football")
 @CrossOrigin(origins = ["http://localhost:5173", "http://localhost:3000"])
-class FootballMatchesController(
-    private val sofascoreService: SofascoreService
-) {
+class FootballMatchesController(private val sofascoreService: SofascoreService) {
 
     @GetMapping("/matches/today")
-    suspend fun getTodayMatches(): List<SofascoreEvent> {
-        return sofascoreService.getTodayFootballMatches()
-    }
+    suspend fun getTodayMatches(): List<SofascoreEvent> = sofascoreService.getTodayFootballMatches()
 
     @GetMapping("/matches/date/{date}")
-    suspend fun getMatchesByDate(@PathVariable date: String): List<SofascoreEvent> {
-        val localDate = LocalDate.parse(date)
-        return sofascoreService.getFootballMatchesByDate(localDate)
-    }
+    suspend fun getMatchesByDate(@PathVariable date: String): List<SofascoreEvent> = sofascoreService.getFootballMatchesByDate(LocalDate.parse(date))
 
     @PostMapping("/matches/date/{date}/refresh")
     suspend fun refreshMatchesByDate(@PathVariable date: String): List<SofascoreEvent> {
@@ -44,35 +37,24 @@ class FootballMatchesController(
         @RequestParam date: String
     ): SofascoreEvent {
         return try {
-            val localDate = LocalDate.parse(date)
-            sofascoreService.refreshSingleMatch(eventId, localDate)
+            sofascoreService.refreshSingleMatch(eventId)
         } catch (e: IllegalArgumentException) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, e.message, e)
         } catch (e: Exception) {
-            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to refresh match $eventId: ${e.message}", e)
+            throw ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to refresh match $eventId: ${e.message}",
+                e
+            )
         }
     }
 
     @GetMapping("/tournament/{tournamentId}/seasons")
-    suspend fun getTournamentSeasons(@PathVariable tournamentId: Long): TournamentSeasonsResponse? {
-        return sofascoreService.getTournamentSeasons(tournamentId)
-    }
+    suspend fun getTournamentSeasons(@PathVariable tournamentId: Long): TournamentSeasonsResponse? = sofascoreService.getTournamentSeasons(tournamentId)
 
     @GetMapping("/tournament/{tournamentId}/season/{seasonId}/standings")
     suspend fun getTournamentStandings(
         @PathVariable tournamentId: Long,
         @PathVariable seasonId: Long
-    ): StandingsResponse? {
-        return sofascoreService.getTournamentStandings(tournamentId, seasonId)
-    }
-
-    @PostMapping("/matches/fix-tournament-data")
-    suspend fun fixTournamentData(): Map<String, Any> {
-        return sofascoreService.fixAllTournamentData()
-    }
-
-    @PostMapping("/matches/fix-known-tournament-ids")
-    fun fixKnownTournamentIds(): Map<String, Any> {
-        return sofascoreService.fixKnownTournamentIds()
-    }
+    ): StandingsResponse? = sofascoreService.getTournamentStandings(tournamentId, seasonId)
 }

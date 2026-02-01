@@ -6,7 +6,7 @@ import java.time.LocalDate
 
 @Entity
 @Table(name = "daily_match_data", uniqueConstraints = [
-    UniqueConstraint(columnNames = ["match_date", "event_id"])
+    UniqueConstraint(columnNames = ["event_id"])
 ])
 data class DailyMatchData(
     @Id

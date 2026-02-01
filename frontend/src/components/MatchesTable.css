@@ -78,3 +78,13 @@
   color: #b0b0b0 !important;
   white-space: nowrap;
 }
+
+.matches-table td:first-child {
+  white-space: nowrap;
+  min-width: 140px;
+}
+
+.highest-value {
+  background-color: rgba(76, 175, 80, 0.3);
+  font-weight: 600;
+}
