@@ -4,18 +4,22 @@ import jp.odds.dto.*
 import jp.odds.entity.DailyMatchData
 import jp.odds.repository.DailyMatchDataRepository
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
+import java.text.Normalizer
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Service
 class SofascoreService(
     webClientBuilder: WebClient.Builder,
-    private val dailyMatchDataRepository: DailyMatchDataRepository
+    private val dailyMatchDataRepository: DailyMatchDataRepository,
+    @Value("\${odds.sofascore.allowed-leagues:}") private val allowedLeaguesConfig: String
 ) {
     private val logger = LoggerFactory.getLogger(SofascoreService::class.java)
+    private val allowedLeagueTokensByCountry = parseAllowedLeagues(allowedLeaguesConfig)
 
     private val webClient = webClientBuilder
         .baseUrl("https://api.sofascore.com/api/v1")
@@ -60,9 +64,12 @@ class SofascoreService(
 
             logger.info("Successfully fetched ${response.events.size} matches")
 
+            val filteredEvents = filterEventsByTopLeagues(response.events)
+            logger.info("Filtered to ${filteredEvents.size} top league matches for $dateStr")
+
             // Fetch odds and voting for each event with delays (sequentially to avoid rate limiting)
             val now = java.time.Instant.now()
-            response.events.forEach { event ->
+            filteredEvents.forEach { event ->
                 kotlinx.coroutines.delay(500L) // 500ms delay between each event
                 event.odds = fetchOddsForEvent(event.id)
                 event.voting = fetchVotingForEvent(event.id)
@@ -70,9 +77,9 @@ class SofascoreService(
             }
 
             // Save to database (will update existing records or insert new ones)
-            saveMatchesToDatabase(date, response.events)
+            saveMatchesToDatabase(date, filteredEvents)
 
-            response.events
+            filteredEvents
         } catch (e: Exception) {
             logger.error("Error fetching football matches: ${e.message}", e)
             emptyList()
@@ -83,7 +90,7 @@ class SofascoreService(
         val dailyData = dailyMatchDataRepository.findByMatchDate(matchDate)
         logger.info("Loaded ${dailyData.size} matches from database for date $matchDate")
 
-        return dailyData.map { data ->
+        val events = dailyData.map { data ->
             SofascoreEvent(
                 id = data.eventId,
                 startTimestamp = data.startTimestamp,
@@ -130,6 +137,8 @@ class SofascoreService(
                 lastUpdated = data.lastUpdated?.epochSecond ?: 0
             )
         }
+
+        return filterEventsByTopLeagues(events)
     }
 
     private fun saveMatchesToDatabase(matchDate: LocalDate, events: List<SofascoreEvent>) {
@@ -170,6 +179,123 @@ class SofascoreService(
 
         dailyMatchDataRepository.saveAll(entities)
         logger.info("Saved ${entities.size} matches to database for date $matchDate")
+    }
+
+    private fun filterEventsByTopLeagues(events: List<SofascoreEvent>): List<SofascoreEvent> {
+        if (events.isEmpty()) {
+            return events
+        }
+
+        return events.filter { event ->
+            val tournamentName = normalize(event.tournament.name)
+            val countryName = normalize(event.tournament.category.country?.name ?: event.tournament.category.name)
+            val allowedTokens = allowedLeagueTokensByCountry[countryName] ?: return@filter false
+            allowedTokens.any { token -> tournamentName.contains(token) }
+        }
+    }
+
+    private fun parseAllowedLeagues(config: String): Map<String, Set<String>> {
+        if (config.isBlank()) {
+            return defaultAllowedLeagueTokens()
+        }
+
+        val entries = config.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val parsed = mutableMapOf<String, MutableSet<String>>()
+
+        entries.forEach { entry ->
+            val parts = entry.split(":", limit = 2)
+            if (parts.size != 2) {
+                logger.warn("Ignoring invalid allowed league entry: '$entry' (expected Country:League)")
+                return@forEach
+            }
+            val country = normalize(parts[0])
+            val league = normalize(parts[1])
+            if (country.isNotBlank() && league.isNotBlank()) {
+                parsed.getOrPut(country) { mutableSetOf() }.add(league)
+            }
+        }
+
+        if (parsed.isEmpty()) {
+            logger.warn("No valid allowed leagues configured, using defaults")
+            return defaultAllowedLeagueTokens()
+        }
+
+        return parsed
+    }
+
+    private fun defaultAllowedLeagueTokens(): Map<String, Set<String>> {
+        return mapOf(
+            "albania" to setOf("kategoria superiore"),
+            "andorra" to setOf("primera divisio"),
+            "armenia" to setOf("premier league"),
+            "austria" to setOf("bundesliga"),
+            "azerbaijan" to setOf("premier league"),
+            "belarus" to setOf("premier league"),
+            "belgium" to setOf("jupiler pro league"),
+            "bosnia and herzegovina" to setOf("premier league"),
+            "bulgaria" to setOf("parva liga"),
+            "croatia" to setOf("1. hnl", "prva hnl"),
+            "cyprus" to setOf("first division"),
+            "czech republic" to setOf("first league", "1. liga"),
+            "denmark" to setOf("superliga"),
+            "england" to setOf("premier league"),
+            "estonia" to setOf("meistriliiga"),
+            "faroe islands" to setOf("premier league"),
+            "finland" to setOf("veikkausliiga"),
+            "france" to setOf("ligue 1"),
+            "georgia" to setOf("erovnuli liga"),
+            "germany" to setOf("bundesliga"),
+            "gibraltar" to setOf("national league"),
+            "greece" to setOf("super league"),
+            "hungary" to setOf("nb i"),
+            "iceland" to setOf("besta deild"),
+            "ireland" to setOf("premier division"),
+            "israel" to setOf("premier league"),
+            "italy" to setOf("serie a"),
+            "kazakhstan" to setOf("premier league"),
+            "kosovo" to setOf("superliga"),
+            "latvia" to setOf("virsliga"),
+            "lithuania" to setOf("a lyga"),
+            "luxembourg" to setOf("national division"),
+            "malta" to setOf("premier league"),
+            "moldova" to setOf("super liga"),
+            "montenegro" to setOf("first league"),
+            "netherlands" to setOf("eredivisie"),
+            "north macedonia" to setOf("first league"),
+            "northern ireland" to setOf("premiership"),
+            "norway" to setOf("eliteserien"),
+            "poland" to setOf("ekstraklasa"),
+            "portugal" to setOf("primeira liga"),
+            "romania" to setOf("liga i"),
+            "russia" to setOf("premier league"),
+            "san marino" to setOf("campionato sammarinese"),
+            "scotland" to setOf("premiership"),
+            "serbia" to setOf("super liga"),
+            "slovakia" to setOf("super liga"),
+            "slovenia" to setOf("prvaliga"),
+            "spain" to setOf("laliga"),
+            "sweden" to setOf("allsvenskan"),
+            "switzerland" to setOf("super league"),
+            "turkey" to setOf("super lig"),
+            "ukraine" to setOf("premier league"),
+            "wales" to setOf("premier league"),
+            "argentina" to setOf("primera division", "liga profesional"),
+            "bolivia" to setOf("division profesional"),
+            "brazil" to setOf("serie a", "brasileirao"),
+            "chile" to setOf("primera division"),
+            "colombia" to setOf("primera a"),
+            "ecuador" to setOf("liga pro"),
+            "paraguay" to setOf("primera division"),
+            "peru" to setOf("liga 1"),
+            "uruguay" to setOf("primera division"),
+            "venezuela" to setOf("primera division")
+        )
+    }
+
+    private fun normalize(value: String?): String {
+        val safeValue = value ?: ""
+        val normalized = Normalizer.normalize(safeValue, Normalizer.Form.NFD)
+        return normalized.replace("\\p{M}+".toRegex(), "").lowercase().trim()
     }
 
     suspend fun fetchOddsForEvent(eventId: Long): Odds? {
