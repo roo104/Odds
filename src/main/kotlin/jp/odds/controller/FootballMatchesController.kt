@@ -1,6 +1,8 @@
 package jp.odds.controller
 
 import jp.odds.dto.SofascoreEvent
+import jp.odds.dto.StandingsResponse
+import jp.odds.dto.TournamentSeasonsResponse
 import jp.odds.service.SofascoreService
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
@@ -49,5 +51,28 @@ class FootballMatchesController(
         } catch (e: Exception) {
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to refresh match $eventId: ${e.message}", e)
         }
+    }
+
+    @GetMapping("/tournament/{tournamentId}/seasons")
+    suspend fun getTournamentSeasons(@PathVariable tournamentId: Long): TournamentSeasonsResponse? {
+        return sofascoreService.getTournamentSeasons(tournamentId)
+    }
+
+    @GetMapping("/tournament/{tournamentId}/season/{seasonId}/standings")
+    suspend fun getTournamentStandings(
+        @PathVariable tournamentId: Long,
+        @PathVariable seasonId: Long
+    ): StandingsResponse? {
+        return sofascoreService.getTournamentStandings(tournamentId, seasonId)
+    }
+
+    @PostMapping("/matches/fix-tournament-data")
+    suspend fun fixTournamentData(): Map<String, Any> {
+        return sofascoreService.fixAllTournamentData()
+    }
+
+    @PostMapping("/matches/fix-known-tournament-ids")
+    fun fixKnownTournamentIds(): Map<String, Any> {
+        return sofascoreService.fixKnownTournamentIds()
     }
 }

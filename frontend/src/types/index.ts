@@ -57,3 +57,34 @@ export interface Voting {
   away?: number;
   total?: number;
 }
+
+export interface StandingsResponse {
+  standings?: StandingGroup[];
+}
+
+export interface StandingGroup {
+  rows?: StandingRow[];
+  name?: string;
+}
+
+export interface StandingRow {
+  team: Team;
+  position: number;
+  matches: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  scoresFor: number;
+  scoresAgainst: number;
+  points: number;
+}
+
+export interface TournamentSeasonsResponse {
+  seasons?: Season[];
+}
+
+export interface Season {
+  id: number;
+  name: string;
+  year?: string;
+}

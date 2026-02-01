@@ -97,14 +97,14 @@ class SofascoreService(
                     name = data.awayTeamName,
                     country = null
                 ),
-                homeScore = null,
-                awayScore = null,
+                homeScore = data.homeScore?.let { Score(current = it) },
+                awayScore = data.awayScore?.let { Score(current = it) },
                 status = Status(
                     type = data.statusType,
                     description = data.statusDescription
                 ),
                 tournament = Tournament(
-                    id = 0,
+                    id = data.tournamentId,
                     name = data.tournamentName,
                     category = Category(
                         name = data.categoryName,
@@ -150,8 +150,11 @@ class SofascoreService(
                 homeTeamName = event.homeTeam.name,
                 awayTeamId = event.awayTeam.id,
                 awayTeamName = event.awayTeam.name,
+                tournamentId = event.tournament.id,
                 tournamentName = event.tournament.name,
                 categoryName = event.tournament.category.name,
+                homeScore = event.homeScore?.current,
+                awayScore = event.awayScore?.current,
                 oddsHome = event.odds?.home,
                 oddsDraw = event.odds?.draw,
                 oddsAway = event.odds?.away,
@@ -280,8 +283,11 @@ class SofascoreService(
 
             logger.debug("Fetched event details for $eventId: status=${response.event?.status?.description}")
             response.event
+        } catch (e: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
+            logger.debug("Event $eventId not found (404)")
+            null
         } catch (e: Exception) {
-            logger.warn("Could not fetch event details for $eventId: ${e.message}", e)
+            logger.warn("Could not fetch event details for $eventId: ${e.message}")
             null
         }
     }
@@ -308,7 +314,24 @@ class SofascoreService(
 
         // Update in database with fresh data
         val now = java.time.Instant.now()
+        val tournamentIdFixes = mapOf<Long, Long>(
+            33L to 23L  // Tournament 33 (volleyball) -> Tournament 23 (Serie A)
+        )
+        val refreshedTournamentId = eventDetails?.tournament?.id?.takeIf { it > 0 } ?: existingData.tournamentId
+        val correctedTournamentId = if ((eventDetails?.tournament?.name ?: existingData.tournamentName) == "Serie A") {
+            tournamentIdFixes[refreshedTournamentId] ?: refreshedTournamentId
+        } else {
+            refreshedTournamentId
+        }
+        val refreshedTournamentName = eventDetails?.tournament?.name?.takeIf { it.isNotBlank() } ?: existingData.tournamentName
+        val refreshedCategoryName = eventDetails?.tournament?.category?.name?.takeIf { it.isNotBlank() } ?: existingData.categoryName
+
         val updatedData = existingData.copy(
+            tournamentId = correctedTournamentId,
+            tournamentName = refreshedTournamentName,
+            categoryName = refreshedCategoryName,
+            homeScore = eventDetails?.homeScore?.current,
+            awayScore = eventDetails?.awayScore?.current,
             oddsHome = odds?.home,
             oddsDraw = odds?.draw,
             oddsAway = odds?.away,
@@ -321,7 +344,41 @@ class SofascoreService(
             lastUpdated = now
         )
         dailyMatchDataRepository.save(updatedData)
-        logger.info("Updated odds and voting for match $eventId in database")
+        logger.info("Updated match $eventId - tournamentId: ${updatedData.tournamentId}, tournamentName: ${updatedData.tournamentName}")
+
+        // Try to fetch and log standings only if we got fresh event details with tournament info
+        if (eventDetails != null && updatedData.tournamentId > 0) {
+            try {
+                val seasonsResponse = getTournamentSeasons(updatedData.tournamentId)
+                if (seasonsResponse?.seasons?.isNotEmpty() == true) {
+                    val currentSeason = seasonsResponse.seasons[0]
+
+                    // Skip if season name indicates non-football sport (volleyball, basketball, etc.)
+                    val seasonName = currentSeason.name ?: ""
+                    if (seasonName.contains("FIVB", ignoreCase = true) ||
+                        seasonName.contains("Volleyball", ignoreCase = true) ||
+                        seasonName.contains("Basketball", ignoreCase = true) ||
+                        seasonName.contains("World Championship", ignoreCase = true)) {
+                        logger.warn("Skipping standings for match $eventId: tournament ${updatedData.tournamentId} (${updatedData.tournamentName}) has non-football season: $seasonName")
+                    } else {
+                        logger.info("Found season for tournament ${updatedData.tournamentId}: ${currentSeason.name} (ID: ${currentSeason.id})")
+                        val standings = getTournamentStandings(updatedData.tournamentId, currentSeason.id)
+                        if (standings?.standings?.isNotEmpty() == true) {
+                            val totalRows = standings.standings.sumOf { it.rows?.size ?: 0 }
+                            logger.info("Fetched standings for tournament ${updatedData.tournamentId}: ${standings.standings.size} groups, $totalRows teams")
+                        } else {
+                            logger.info("No standings found for tournament ${updatedData.tournamentId}, season ${currentSeason.id}")
+                        }
+                    }
+                } else {
+                    logger.info("No seasons found for tournament ${updatedData.tournamentId}")
+                }
+            } catch (e: Exception) {
+                logger.warn("Error fetching standings for tournament ${updatedData.tournamentId}: ${e.message}")
+            }
+        } else {
+            logger.debug("Tournament ID is 0 for match $eventId, cannot fetch standings")
+        }
 
         // Reconstruct the event from database with updated data
         return SofascoreEvent(
@@ -344,7 +401,7 @@ class SofascoreService(
                 description = updatedData.statusDescription
             ),
             tournament = Tournament(
-                id = 0,
+                id = updatedData.tournamentId,
                 name = updatedData.tournamentName,
                 category = Category(
                     name = updatedData.categoryName,
@@ -356,5 +413,100 @@ class SofascoreService(
             voting = voting,
             lastUpdated = now.epochSecond
         )
+    }
+
+    suspend fun getTournamentSeasons(tournamentId: Long): TournamentSeasonsResponse? {
+        return try {
+            val response = webClient
+                .get()
+                .uri("/unique-tournament/$tournamentId/seasons")
+                .retrieve()
+                .awaitBody<TournamentSeasonsResponse>()
+
+            logger.info("Fetched seasons for tournament $tournamentId: ${response.seasons?.size} seasons")
+            response
+        } catch (e: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
+            logger.debug("Tournament $tournamentId not found (404)")
+            null
+        } catch (e: Exception) {
+            logger.warn("Could not fetch seasons for tournament $tournamentId: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun getTournamentStandings(tournamentId: Long, seasonId: Long): StandingsResponse? {
+        return try {
+            val response = webClient
+                .get()
+                .uri("/unique-tournament/$tournamentId/season/$seasonId/standings/total")
+                .retrieve()
+                .awaitBody<StandingsResponse>()
+
+            logger.info("Fetched standings for tournament $tournamentId, season $seasonId: ${response.standings?.size} groups")
+            response
+        } catch (e: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
+            logger.debug("Standings not found for tournament $tournamentId, season $seasonId (404)")
+            null
+        } catch (e: Exception) {
+            logger.warn("Could not fetch standings for tournament $tournamentId, season $seasonId: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun fixAllTournamentData(): Map<String, Any> {
+        logger.info("Starting to fix all tournament data")
+        val allRecords = dailyMatchDataRepository.findAll()
+        var updated = 0
+        var failed = 0
+
+        allRecords.forEach { record ->
+            try {
+                kotlinx.coroutines.delay(500L) // Rate limiting
+                val eventDetails = fetchEventDetails(record.eventId)
+                if (eventDetails != null) {
+                    val updatedRecord = record.copy(
+                        tournamentId = eventDetails.tournament.id,
+                        tournamentName = eventDetails.tournament.name,
+                        categoryName = eventDetails.tournament.category.name
+                    )
+                    dailyMatchDataRepository.save(updatedRecord)
+                    logger.info("Fixed record for event ${record.eventId}: ${eventDetails.tournament.name} (ID: ${eventDetails.tournament.id})")
+                    updated++
+                } else {
+                    logger.warn("Could not fetch details for event ${record.eventId}")
+                    failed++
+                }
+            } catch (e: Exception) {
+                logger.error("Error fixing record for event ${record.eventId}: ${e.message}")
+                failed++
+            }
+        }
+
+        logger.info("Finished fixing tournament data: $updated updated, $failed failed")
+        return mapOf("updated" to updated, "failed" to failed, "total" to allRecords.count())
+    }
+
+    fun fixKnownTournamentIds(): Map<String, Any> {
+        logger.info("Starting to fix known tournament ID mismatches")
+        val allRecords = dailyMatchDataRepository.findAll()
+        var updated = 0
+
+        // Map of incorrect tournament IDs to correct ones for known leagues
+        val tournamentIdFixes = mapOf<Long, Long>(
+            33L to 23L  // Tournament 33 (volleyball) -> Tournament 23 (Serie A)
+        )
+
+        allRecords.forEach { record ->
+            if (record.tournamentName == "Serie A" && record.tournamentId in tournamentIdFixes.keys) {
+                val correctId = tournamentIdFixes[record.tournamentId]!!
+                val updatedRecord = record.copy(tournamentId = correctId)
+                dailyMatchDataRepository.save(updatedRecord)
+                logger.info("Fixed Serie A record for event ${record.eventId}: ${record.tournamentId} -> $correctId")
+                updated++
+            }
+        }
+
+        logger.info("Finished fixing known tournament IDs: $updated updated")
+        return mapOf("updated" to updated, "total" to allRecords.count())
     }
 }

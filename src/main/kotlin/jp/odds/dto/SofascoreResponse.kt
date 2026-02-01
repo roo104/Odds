@@ -118,3 +118,39 @@ data class TeamEventsResponse(
     val nextEvent: SofascoreEvent? = null,
     val events: List<SofascoreEvent>? = null
 )
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class StandingsResponse(
+    val standings: List<StandingGroup>? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class StandingGroup(
+    val rows: List<StandingRow>? = null,
+    val name: String? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class StandingRow(
+    val team: Team,
+    val position: Int? = null,
+    val matches: Int? = null,
+    val wins: Int? = null,
+    val draws: Int? = null,
+    val losses: Int? = null,
+    val scoresFor: Int? = null,
+    val scoresAgainst: Int? = null,
+    val points: Int? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class TournamentSeasonsResponse(
+    val seasons: List<Season>? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class Season(
+    val id: Long,
+    val name: String,
+    val year: String? = null
+)

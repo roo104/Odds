@@ -34,6 +34,9 @@ data class DailyMatchData(
     @Column(name = "away_team_name", nullable = false)
     val awayTeamName: String = "",
 
+    @Column(name = "tournament_id", nullable = false)
+    val tournamentId: Long = 0,
+
     @Column(name = "tournament_name", nullable = false)
     val tournamentName: String = "",
 
@@ -66,6 +69,12 @@ data class DailyMatchData(
 
     @Column(name = "status_description", nullable = false)
     val statusDescription: String = "",
+
+    @Column(name = "home_score")
+    val homeScore: Int? = null,
+
+    @Column(name = "away_score")
+    val awayScore: Int? = null,
 
     @Column(name = "last_updated", nullable = true)
     val lastUpdated: Instant? = null

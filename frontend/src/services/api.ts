@@ -1,4 +1,4 @@
-import {SofascoreEvent} from '../types';
+import {SofascoreEvent, StandingsResponse, TournamentSeasonsResponse} from '../types';
 
 const API_BASE_URL = 'http://localhost:8080/api/football';
 
@@ -34,6 +34,18 @@ export const footballApi = {
       method: 'POST',
     });
     if (!response.ok) throw new Error('Failed to refresh single match');
+    return response.json();
+  },
+
+  getTournamentSeasons: async (tournamentId: number): Promise<TournamentSeasonsResponse | null> => {
+    const response = await fetch(`${API_BASE_URL}/tournament/${tournamentId}/seasons`);
+    if (!response.ok) return null;
+    return response.json();
+  },
+
+  getTournamentStandings: async (tournamentId: number, seasonId: number): Promise<StandingsResponse | null> => {
+    const response = await fetch(`${API_BASE_URL}/tournament/${tournamentId}/season/${seasonId}/standings`);
+    if (!response.ok) return null;
     return response.json();
   },
 };

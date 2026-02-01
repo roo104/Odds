@@ -141,6 +141,11 @@ function FootballMatchesView() {
         )
       );
 
+      // If this match is currently selected in the dialog, update it too
+      if (selectedEvent && selectedEvent.id === eventId) {
+        setSelectedEvent(updatedMatch);
+      }
+
       showToast('Match refreshed successfully', 'success');
     } catch (error: any) {
       console.error('Failed to refresh match:', error);

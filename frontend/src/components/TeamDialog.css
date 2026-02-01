@@ -59,6 +59,36 @@
   padding: 20px;
 }
 
+.dialog-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px 0 20px;
+  background-color: #2d2d2d;
+  border-bottom: 1px solid #444;
+}
+
+.dialog-tab {
+  background-color: #3a3a3a;
+  border: 1px solid transparent;
+  color: #e0e0e0;
+  padding: 8px 12px;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dialog-tab.active {
+  background-color: #4a4a4a;
+  border-color: #555;
+  color: #fff;
+}
+
+.dialog-tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .team-section {
   margin-bottom: 30px;
 }
@@ -165,4 +195,59 @@
 
 .voting-bar.away-vote {
   background-color: #e24a4a;
+}
+
+.standings-section {
+  padding: 20px;
+  background-color: #2d2d2d;
+  border-bottom: 1px solid #444;
+}
+
+.standings-section h3 {
+  color: #e0e0e0;
+  margin: 0 0 15px 0;
+  font-size: 16px;
+}
+
+.standings-section h4 {
+  color: #e0e0e0;
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+.standings-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #2d2d2d;
+  margin-bottom: 15px;
+}
+
+.standings-table th {
+  background-color: #3a3a3a;
+  color: #e0e0e0;
+  padding: 8px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.standings-table td {
+  padding: 8px;
+  border-bottom: 1px solid #444;
+  color: #e0e0e0;
+  text-align: center;
+  font-size: 12px;
+}
+
+.standings-table td:nth-child(2) {
+  text-align: left;
+}
+
+.standings-table th:nth-child(2) {
+  text-align: left;
+}
+
+.standings-table tbody tr.highlight-team {
+  background-color: rgba(74, 144, 226, 0.3);
+  font-weight: 600;
 }
