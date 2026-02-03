@@ -21,7 +21,7 @@ class SofascoreService(
     private val dailyMatchDataRepository: DailyMatchDataRepository,
     private val matchOddsHistoryRepository: jp.odds.repository.MatchOddsHistoryRepository,
     private val matchVotesHistoryRepository: jp.odds.repository.MatchVotesHistoryRepository,
-    @Value("\${odds.sofascore.allowed-leagues:}") private val allowedLeaguesConfig: String
+    @Value($$"${odds.sofascore.allowed-leagues:}") private val allowedLeaguesConfig: String
 ) {
     private val logger = LoggerFactory.getLogger(SofascoreService::class.java)
     private val allowedLeagueTokensByCountry = parseAllowedLeagues(allowedLeaguesConfig)
@@ -52,13 +52,13 @@ class SofascoreService(
         val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         // Check if data for this date already exists in database
-        if (!forceRefresh && withContext(Dispatchers.IO) { dailyMatchDataRepository.existsByMatchDate(date) }) {
+        if (!forceRefresh) {
             logger.info("Loading matches for $dateStr from database")
             return loadMatchesFromDatabase(date)
         }
 
         val uri = "/sport/football/scheduled-events/$dateStr"
-        logger.info("Fetching football matches for date: $dateStr from URI: $uri (forceRefresh=$forceRefresh)")
+        logger.info("Fetching football matches for date: $dateStr from URI: $uri (forceRefresh=${true})")
 
         return try {
             val response = webClient
@@ -410,24 +410,6 @@ class SofascoreService(
         }
     }
 
-    private fun calculateFormPoints(matches: List<SofascoreEvent>, teamId: Long): Int {
-        return matches.sumOf { event ->
-            val homeScore = event.homeScore?.current
-            val awayScore = event.awayScore?.current
-
-            if (homeScore != null && awayScore != null) {
-                val isHomeTeam = event.homeTeam.id == teamId
-                when {
-                    homeScore == awayScore -> 1 // Draw
-                    (isHomeTeam && homeScore > awayScore) || (!isHomeTeam && awayScore > homeScore) -> 2 // Win
-                    else -> 0 // Loss
-                }
-            } else {
-                0
-            }
-        }
-    }
-
     private suspend fun fetchEventDetails(eventId: Long): SofascoreEvent? {
         return try {
             val response = webClient
@@ -473,11 +455,10 @@ class SofascoreService(
         }
 
         // Update in database with fresh data
-        val tournamentIdFixes = mapOf<Long, Long>(
+        val tournamentIdFixes = mapOf(
             33L to 23L   // Tournament 33 (volleyball) -> Tournament 23 (Serie A)
         )
         val refreshedTournamentId = eventDetails?.tournament?.id?.takeIf { it > 0 } ?: existingData.tournamentId
-        val tournamentName = eventDetails?.tournament?.name ?: existingData.tournamentName
         val correctedTournamentId = tournamentIdFixes[refreshedTournamentId] ?: refreshedTournamentId
         val refreshedTournamentName = eventDetails?.tournament?.name?.takeIf { it.isNotBlank() } ?: existingData.tournamentName
         val refreshedCategoryName = eventDetails?.tournament?.category?.name?.takeIf { it.isNotBlank() } ?: existingData.categoryName
@@ -584,7 +565,7 @@ class SofascoreService(
 
             logger.info("Fetched seasons for tournament $tournamentId: ${response.seasons?.size ?: 0} seasons - ${response.seasons?.map { "${it.name} (${it.id})" }}")
             response
-        } catch (e: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
+        } catch (_: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
             logger.warn("Tournament $tournamentId seasons not found (404) - may not be available on Sofascore")
             null
         } catch (e: Exception) {
