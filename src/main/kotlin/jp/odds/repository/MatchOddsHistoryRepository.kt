@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository
 @Repository
 interface MatchOddsHistoryRepository : JpaRepository<MatchOddsHistory, Long> {
     fun findByEventIdOrderByRecordedAtAsc(eventId: Long): List<MatchOddsHistory>
+    fun findFirstByEventIdOrderByRecordedAtDesc(eventId: Long): MatchOddsHistory?
 }

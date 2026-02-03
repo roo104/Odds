@@ -595,34 +595,63 @@ class SofascoreService(
 
     private suspend fun saveOddsHistory(eventId: Long, odds: Odds?, timestamp: Instant) {
         if (odds != null && (odds.home != null || odds.draw != null || odds.away != null)) {
-            val oddsHistory = jp.odds.entity.MatchOddsHistory().apply {
-                this.eventId = eventId
-                this.oddsHome = odds.home
-                this.oddsDraw = odds.draw
-                this.oddsAway = odds.away
-                this.recordedAt = timestamp
+            // Check if the latest odds entry has the same values
+            val latestOdds = withContext(Dispatchers.IO) {
+                matchOddsHistoryRepository.findFirstByEventIdOrderByRecordedAtDesc(eventId)
             }
-            withContext(Dispatchers.IO) {
-                matchOddsHistoryRepository.save(oddsHistory)
+
+            // Only save if values have changed
+            if (latestOdds == null ||
+                latestOdds.oddsHome != odds.home ||
+                latestOdds.oddsDraw != odds.draw ||
+                latestOdds.oddsAway != odds.away) {
+
+                val oddsHistory = jp.odds.entity.MatchOddsHistory().apply {
+                    this.eventId = eventId
+                    this.oddsHome = odds.home
+                    this.oddsDraw = odds.draw
+                    this.oddsAway = odds.away
+                    this.recordedAt = timestamp
+                }
+                withContext(Dispatchers.IO) {
+                    matchOddsHistoryRepository.save(oddsHistory)
+                }
+                logger.debug("Saved odds history for event $eventId (values changed)")
+            } else {
+                logger.debug("Skipped odds history for event $eventId (no changes)")
             }
-            logger.debug("Saved odds history for event $eventId")
         }
     }
 
     private suspend fun saveVotesHistory(eventId: Long, voting: Voting?, timestamp: Instant) {
         if (voting != null && (voting.home != null || voting.draw != null || voting.away != null)) {
-            val votesHistory = jp.odds.entity.MatchVotesHistory().apply {
-                this.eventId = eventId
-                this.votingHome = voting.home
-                this.votingDraw = voting.draw
-                this.votingAway = voting.away
-                this.votingTotal = voting.total
-                this.recordedAt = timestamp
+            // Check if the latest votes entry has the same values
+            val latestVotes = withContext(Dispatchers.IO) {
+                matchVotesHistoryRepository.findFirstByEventIdOrderByRecordedAtDesc(eventId)
             }
-            withContext(Dispatchers.IO) {
-                matchVotesHistoryRepository.save(votesHistory)
+
+            // Only save if values have changed
+            if (latestVotes == null ||
+                latestVotes.votingHome != voting.home ||
+                latestVotes.votingDraw != voting.draw ||
+                latestVotes.votingAway != voting.away ||
+                latestVotes.votingTotal != voting.total) {
+
+                val votesHistory = jp.odds.entity.MatchVotesHistory().apply {
+                    this.eventId = eventId
+                    this.votingHome = voting.home
+                    this.votingDraw = voting.draw
+                    this.votingAway = voting.away
+                    this.votingTotal = voting.total
+                    this.recordedAt = timestamp
+                }
+                withContext(Dispatchers.IO) {
+                    matchVotesHistoryRepository.save(votesHistory)
+                }
+                logger.debug("Saved votes history for event $eventId (values changed)")
+            } else {
+                logger.debug("Skipped votes history for event $eventId (no changes)")
             }
-            logger.debug("Saved votes history for event $eventId")
         }
     }
 
