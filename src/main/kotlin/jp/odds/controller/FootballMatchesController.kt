@@ -5,6 +5,7 @@ import jp.odds.dto.StandingsResponse
 import jp.odds.dto.TournamentSeasonsResponse
 import jp.odds.service.SofascoreService
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDate
@@ -50,11 +51,25 @@ class FootballMatchesController(private val sofascoreService: SofascoreService) 
     }
 
     @GetMapping("/tournament/{tournamentId}/seasons")
-    suspend fun getTournamentSeasons(@PathVariable tournamentId: Long): TournamentSeasonsResponse? = sofascoreService.getTournamentSeasons(tournamentId)
+    suspend fun getTournamentSeasons(@PathVariable tournamentId: Long): ResponseEntity<TournamentSeasonsResponse> {
+        val result = sofascoreService.getTournamentSeasons(tournamentId)
+        return if (result != null) {
+            ResponseEntity.ok(result)
+        } else {
+            ResponseEntity.notFound().build()
+        }
+    }
 
     @GetMapping("/tournament/{tournamentId}/season/{seasonId}/standings")
     suspend fun getTournamentStandings(
         @PathVariable tournamentId: Long,
         @PathVariable seasonId: Long
-    ): StandingsResponse? = sofascoreService.getTournamentStandings(tournamentId, seasonId)
+    ): ResponseEntity<StandingsResponse> {
+        val result = sofascoreService.getTournamentStandings(tournamentId, seasonId)
+        return if (result != null) {
+            ResponseEntity.ok(result)
+        } else {
+            ResponseEntity.notFound().build()
+        }
+    }
 }

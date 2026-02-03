@@ -38,14 +38,36 @@ export const footballApi = {
   },
 
   getTournamentSeasons: async (tournamentId: number): Promise<TournamentSeasonsResponse | null> => {
-    const response = await fetch(`${API_BASE_URL}/tournament/${tournamentId}/seasons`);
-    if (!response.ok) return null;
-    return response.json();
+    try {
+      const response = await fetch(`${API_BASE_URL}/tournament/${tournamentId}/seasons`);
+      console.log('getTournamentSeasons response status:', response.status, 'for tournament:', tournamentId);
+      if (!response.ok) {
+        console.warn('getTournamentSeasons failed:', response.status, response.statusText);
+        return null;
+      }
+      const data = await response.json();
+      console.log('getTournamentSeasons data:', data);
+      return data;
+    } catch (error) {
+      console.error('getTournamentSeasons error:', error);
+      return null;
+    }
   },
 
   getTournamentStandings: async (tournamentId: number, seasonId: number): Promise<StandingsResponse | null> => {
-    const response = await fetch(`${API_BASE_URL}/tournament/${tournamentId}/season/${seasonId}/standings`);
-    if (!response.ok) return null;
-    return response.json();
+    try {
+      const response = await fetch(`${API_BASE_URL}/tournament/${tournamentId}/season/${seasonId}/standings`);
+      console.log('getTournamentStandings response status:', response.status, 'for tournament:', tournamentId, 'season:', seasonId);
+      if (!response.ok) {
+        console.warn('getTournamentStandings failed:', response.status, response.statusText);
+        return null;
+      }
+      const data = await response.json();
+      console.log('getTournamentStandings data:', data);
+      return data;
+    } catch (error) {
+      console.error('getTournamentStandings error:', error);
+      return null;
+    }
   },
 };

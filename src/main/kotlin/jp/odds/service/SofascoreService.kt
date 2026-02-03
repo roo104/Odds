@@ -464,14 +464,11 @@ class SofascoreService(
         // Update in database with fresh data
         val now = Instant.now()
         val tournamentIdFixes = mapOf<Long, Long>(
-            33L to 23L  // Tournament 33 (volleyball) -> Tournament 23 (Serie A)
+            33L to 23L   // Tournament 33 (volleyball) -> Tournament 23 (Serie A)
         )
         val refreshedTournamentId = eventDetails?.tournament?.id?.takeIf { it > 0 } ?: existingData.tournamentId
-        val correctedTournamentId = if ((eventDetails?.tournament?.name ?: existingData.tournamentName) == "Serie A") {
-            tournamentIdFixes[refreshedTournamentId] ?: refreshedTournamentId
-        } else {
-            refreshedTournamentId
-        }
+        val tournamentName = eventDetails?.tournament?.name ?: existingData.tournamentName
+        val correctedTournamentId = tournamentIdFixes[refreshedTournamentId] ?: refreshedTournamentId
         val refreshedTournamentName = eventDetails?.tournament?.name?.takeIf { it.isNotBlank() } ?: existingData.tournamentName
         val refreshedCategoryName = eventDetails?.tournament?.category?.name?.takeIf { it.isNotBlank() } ?: existingData.categoryName
 
@@ -568,16 +565,17 @@ class SofascoreService(
 
     suspend fun getTournamentSeasons(tournamentId: Long): TournamentSeasonsResponse? {
         return try {
+            logger.info("Fetching seasons for tournament $tournamentId from Sofascore API...")
             val response = webClient
                 .get()
                 .uri("/unique-tournament/$tournamentId/seasons")
                 .retrieve()
                 .awaitBody<TournamentSeasonsResponse>()
 
-            logger.info("Fetched seasons for tournament $tournamentId: ${response.seasons?.size} seasons")
+            logger.info("Fetched seasons for tournament $tournamentId: ${response.seasons?.size ?: 0} seasons - ${response.seasons?.map { "${it.name} (${it.id})" }}")
             response
-        } catch (_: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
-            logger.debug("Tournament $tournamentId not found (404)")
+        } catch (e: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
+            logger.warn("Tournament $tournamentId seasons not found (404) - may not be available on Sofascore")
             null
         } catch (e: Exception) {
             logger.warn("Could not fetch seasons for tournament $tournamentId: ${e.message}")

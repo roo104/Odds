@@ -16,6 +16,7 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
   const [activeTab, setActiveTab] = useState<'matches' | 'standings'>('matches');
 
   useEffect(() => {
+    setStandings(null); // Reset standings when event changes
     loadTeamEvents();
     setActiveTab('matches');
   }, [event]);
