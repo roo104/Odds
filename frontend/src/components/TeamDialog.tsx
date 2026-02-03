@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react';
 import {MatchHistoryResponse, SofascoreEvent, StandingsResponse} from '../types';
 import {footballApi} from '../services/api';
+import {CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 import './TeamDialog.css';
 
 interface TeamDialogProps {
@@ -327,6 +328,30 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
                 {matchHistory && matchHistory.oddsHistory.length > 0 && (
                   <div className="history-subsection">
                     <h4>Odds History</h4>
+                    {matchHistory.oddsHistory.length > 1 && (
+                      <div style={{ width: '100%', height: 300, marginBottom: '20px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={matchHistory.oddsHistory.map(point => ({
+                              time: formatHistoryTimestamp(point.timestamp),
+                              home: point.home ? parseFloat(formatOdds(point.home)) : null,
+                              draw: point.draw ? parseFloat(formatOdds(point.draw)) : null,
+                              away: point.away ? parseFloat(formatOdds(point.away)) : null,
+                            }))}
+                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="time" />
+                            <YAxis label={{ value: 'Odds', angle: -90, position: 'insideLeft' }} />
+                            <Tooltip />
+                            <Legend />
+                            <Line type="monotone" dataKey="home" stroke="#8884d8" name={event.homeTeam.name} />
+                            <Line type="monotone" dataKey="draw" stroke="#82ca9d" name="Draw" />
+                            <Line type="monotone" dataKey="away" stroke="#ffc658" name={event.awayTeam.name} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                     <table className="history-table">
                       <thead>
                         <tr>
