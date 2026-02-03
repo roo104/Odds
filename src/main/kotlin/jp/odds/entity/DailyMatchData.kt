@@ -43,6 +43,9 @@ data class DailyMatchData(
     @Column(name = "category_name", nullable = false)
     val categoryName: String = "",
 
+    @Column(name = "country_name")
+    val countryName: String? = null,
+
     @Column(name = "odds_home")
     val oddsHome: String? = null,
 

@@ -130,7 +130,7 @@ class SofascoreService(
                     name = data.tournamentName,
                     category = Category(
                         name = data.categoryName,
-                        country = null
+                        country = data.countryName?.let { Country(it) }
                     )
                 ),
                 vote = null,
@@ -189,6 +189,7 @@ class SofascoreService(
                 tournamentId = event.tournament.id,
                 tournamentName = event.tournament.name,
                 categoryName = event.tournament.category.name,
+                countryName = event.tournament.category.country?.name,
                 homeScore = event.homeScore?.current,
                 awayScore = event.awayScore?.current,
                 oddsHome = event.odds?.home,

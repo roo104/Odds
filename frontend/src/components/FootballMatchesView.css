@@ -42,3 +42,47 @@
 .category-section[open] summary {
   margin-bottom: 10px;
 }
+
+.country-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #2d2d2d;
+  border-radius: 8px;
+}
+
+.country-filter-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #3a3a3a;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  color: #b0b0b0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.country-filter-button:hover {
+  background-color: #454545;
+  border-color: #555;
+}
+
+.country-filter-button.active {
+  background-color: #4a7c59;
+  border-color: #5a9d6d;
+  color: #ffffff;
+}
+
+.country-filter-button .flag {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.country-filter-button .country-name {
+  font-weight: 500;
+}

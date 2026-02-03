@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {footballApi} from '../services/api';
 import {SofascoreEvent} from '../types';
 import MatchesTable from './MatchesTable';
@@ -22,6 +22,7 @@ function FootballMatchesView() {
   const [filterMatchCriteria, setFilterMatchCriteria] = useState(false);
   const [minOdds, setMinOdds] = useState(3.0);
   const [minVotePercent, setMinVotePercent] = useState(70);
+  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
   const [selectedEvent, setSelectedEvent] = useState<SofascoreEvent | null>(null);
   const [refreshingMatchId, setRefreshingMatchId] = useState<number | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -47,6 +48,7 @@ function FootballMatchesView() {
         ? await footballApi.refreshMatchesByDate(dateStr)
         : await footballApi.getMatchesByDate(dateStr);
       setAllMatches(matches);
+      setSelectedCountries(new Set());
     } catch (error) {
       console.error('Failed to load matches:', error);
     } finally {
@@ -98,7 +100,35 @@ function FootballMatchesView() {
       filtered = filtered.filter(shouldHighlight);
     }
 
+    if (selectedCountries.size > 0) {
+      filtered = filtered.filter(m => 
+        selectedCountries.has(m.tournament.category.country?.name || '')
+      );
+    }
+
     return filtered;
+  };
+
+  const availableCountries = useMemo(() => {
+    return Array.from(
+      new Set(
+        allMatches
+          .map(m => m.tournament.category.country?.name)
+          .filter((name): name is string => !!name)
+      )
+    ).sort();
+  }, [allMatches]);
+
+  const toggleCountry = (country: string) => {
+    setSelectedCountries(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(country)) {
+        newSet.delete(country);
+      } else {
+        newSet.add(country);
+      }
+      return newSet;
+    });
   };
 
   const groupedMatches = getFilteredMatches().reduce((acc, match) => {
@@ -126,6 +156,105 @@ function FootballMatchesView() {
 
   const handleMatchClick = (event: SofascoreEvent) => {
     setSelectedEvent(event);
+  };
+
+  const getCountryFlag = (countryName: string): string => {
+    const countryFlags: Record<string, string> = {
+      'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+      'Spain': '🇪🇸',
+      'Germany': '🇩🇪',
+      'Italy': '🇮🇹',
+      'France': '🇫🇷',
+      'Portugal': '🇵🇹',
+      'Netherlands': '🇳🇱',
+      'Belgium': '🇧🇪',
+      'Turkey': '🇹🇷',
+      'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+      'Austria': '🇦🇹',
+      'Switzerland': '🇨🇭',
+      'Denmark': '🇩🇰',
+      'Sweden': '🇸🇪',
+      'Norway': '🇳🇴',
+      'Poland': '🇵🇱',
+      'Czech Republic': '🇨🇿',
+      'Greece': '🇬🇷',
+      'Croatia': '🇭🇷',
+      'Serbia': '🇷🇸',
+      'Ukraine': '🇺🇦',
+      'Russia': '🇷🇺',
+      'Brazil': '🇧🇷',
+      'Argentina': '🇦🇷',
+      'USA': '🇺🇸',
+      'Mexico': '🇲🇽',
+      'Japan': '🇯🇵',
+      'South Korea': '🇰🇷',
+      'Australia': '🇦🇺',
+      'Saudi Arabia': '🇸🇦',
+      'United Arab Emirates': '🇦🇪',
+      'China': '🇨🇳',
+      'India': '🇮🇳',
+      'Egypt': '🇪🇬',
+      'South Africa': '🇿🇦',
+      'Morocco': '🇲🇦',
+      'Algeria': '🇩🇿',
+      'Tunisia': '🇹🇳',
+      'Israel': '🇮🇱',
+      'Canada': '🇨🇦',
+      'Chile': '🇨🇱',
+      'Colombia': '🇨🇴',
+      'Uruguay': '🇺🇾',
+      'Paraguay': '🇵🇾',
+      'Ecuador': '🇪🇨',
+      'Peru': '🇵🇪',
+      'Venezuela': '🇻🇪',
+      'Bolivia': '🇧🇴',
+      'Romania': '🇷🇴',
+      'Bulgaria': '🇧🇬',
+      'Hungary': '🇭🇺',
+      'Slovakia': '🇸🇰',
+      'Slovenia': '🇸🇮',
+      'Republic of Ireland': '🇮🇪',
+      'Northern Ireland': '🇬🇧',
+      'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
+      'Finland': '🇫🇮',
+      'Iceland': '🇮🇸',
+      'Luxembourg': '🇱🇺',
+      'Cyprus': '🇨🇾',
+      'Malta': '🇲🇹',
+      'Albania': '🇦🇱',
+      'Bosnia and Herzegovina': '🇧🇦',
+      'Montenegro': '🇲🇪',
+      'North Macedonia': '🇲🇰',
+      'Kosovo': '🇽🇰',
+      'Lithuania': '🇱🇹',
+      'Latvia': '🇱🇻',
+      'Estonia': '🇪🇪',
+      'Belarus': '🇧🇾',
+      'Moldova': '🇲🇩',
+      'Georgia': '🇬🇪',
+      'Armenia': '🇦🇲',
+      'Azerbaijan': '🇦🇿',
+      'Kazakhstan': '🇰🇿',
+      'Uzbekistan': '🇺🇿',
+      'Qatar': '🇶🇦',
+      'Kuwait': '🇰🇼',
+      'Bahrain': '🇧🇭',
+      'Oman': '🇴🇲',
+      'Iraq': '🇮🇶',
+      'Iran': '🇮🇷',
+      'Lebanon': '🇱🇧',
+      'Jordan': '🇯🇴',
+      'Palestine': '🇵🇸',
+      'Syria': '🇸🇾',
+      'Vietnam': '🇻🇳',
+      'Thailand': '🇹🇭',
+      'Malaysia': '🇲🇾',
+      'Singapore': '🇸🇬',
+      'Indonesia': '🇮🇩',
+      'Philippines': '🇵🇭',
+      'New Zealand': '🇳🇿',
+    };
+    return countryFlags[countryName] || '🌍';
   };
 
   const handleRefreshMatch = async (eventId: number) => {
@@ -178,6 +307,21 @@ function FootballMatchesView() {
         minVotePercent={minVotePercent}
         setMinVotePercent={setMinVotePercent}
       />
+
+      {availableCountries.length > 0 && (
+        <div className="country-filters">
+          {availableCountries.map((country) => (
+            <button
+              key={country}
+              className={`country-filter-button ${selectedCountries.has(country) ? 'active' : ''}`}
+              onClick={() => toggleCountry(country)}
+            >
+              <span className="flag">{getCountryFlag(country)}</span>
+              <span className="country-name">{country}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className="loading">Loading matches...</div>
