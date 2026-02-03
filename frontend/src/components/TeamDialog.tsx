@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {SofascoreEvent, StandingsResponse} from '../types';
+import {MatchHistoryResponse, SofascoreEvent, StandingsResponse} from '../types';
 import {footballApi} from '../services/api';
 import './TeamDialog.css';
 
@@ -12,11 +12,13 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
   const [homeTeamEvents, setHomeTeamEvents] = useState<SofascoreEvent[]>([]);
   const [awayTeamEvents, setAwayTeamEvents] = useState<SofascoreEvent[]>([]);
   const [standings, setStandings] = useState<StandingsResponse | null>(null);
+  const [matchHistory, setMatchHistory] = useState<MatchHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'matches' | 'standings'>('matches');
+  const [activeTab, setActiveTab] = useState<'matches' | 'standings' | 'history'>('matches');
 
   useEffect(() => {
     setStandings(null); // Reset standings when event changes
+    setMatchHistory(null); // Reset match history when event changes
     loadTeamEvents();
     setActiveTab('matches');
   }, [event]);
@@ -24,12 +26,14 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
   const loadTeamEvents = async () => {
     setLoading(true);
     try {
-      const [home, away] = await Promise.all([
+      const [home, away, history] = await Promise.all([
         footballApi.getTeamEvents(event.homeTeam.id),
         footballApi.getTeamEvents(event.awayTeam.id),
+        footballApi.getMatchHistory(event.id),
       ]);
       setHomeTeamEvents(home.slice(0, 5));
       setAwayTeamEvents(away.slice(0, 5));
+      setMatchHistory(history);
 
       // Try to fetch league standings if it's a league tournament
       // Skip if tournament ID is 0 (invalid/not saved properly)
@@ -92,6 +96,31 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
+  };
+
+  const formatHistoryTimestamp = (timestamp: number) => {
+    const date = new Date(timestamp * 1000);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+  };
+
+  const formatOdds = (fractionalOdds: string | undefined) => {
+    if (!fractionalOdds) return '-';
+    try {
+      const parts = fractionalOdds.split('/');
+      if (parts.length === 2) {
+        const decimal = parseInt(parts[0]) / parseInt(parts[1]) + 1;
+        return decimal.toFixed(2);
+      }
+      return fractionalOdds;
+    } catch {
+      return fractionalOdds;
+    }
   };
 
   const getMatchResult = (match: SofascoreEvent, teamId: number): 'win' | 'loss' | 'draw' | null => {
@@ -167,6 +196,15 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
               >
                 Standings
               </button>
+              <button
+                type="button"
+                className={`dialog-tab ${activeTab === 'history' ? 'active' : ''}`}
+                onClick={() => setActiveTab('history')}
+                disabled={!matchHistory || (matchHistory.oddsHistory.length === 0 && matchHistory.votesHistory.length === 0)}
+                title={(!matchHistory || (matchHistory.oddsHistory.length === 0 && matchHistory.votesHistory.length === 0)) ? 'History not available' : 'Odds and votes evolution'}
+              >
+                History
+              </button>
             </div>
 
             {activeTab === 'matches' ? (
@@ -237,7 +275,7 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
                   </table>
                 </div>
               </div>
-            ) : (
+            ) : activeTab === 'standings' ? (
               <div className="standings-section">
                 <h3>League Standings</h3>
                 {standings?.standings?.map((group, idx) => (
@@ -282,6 +320,65 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
                     </table>
                   </div>
                 ))}
+              </div>
+            ) : (
+              <div className="history-section">
+                <h3>Odds & Votes Evolution</h3>
+                {matchHistory && matchHistory.oddsHistory.length > 0 && (
+                  <div className="history-subsection">
+                    <h4>Odds History</h4>
+                    <table className="history-table">
+                      <thead>
+                        <tr>
+                          <th>Time</th>
+                          <th>{event.homeTeam.name}</th>
+                          <th>Draw</th>
+                          <th>{event.awayTeam.name}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {matchHistory.oddsHistory.map((point, idx) => (
+                          <tr key={idx}>
+                            <td>{formatHistoryTimestamp(point.timestamp)}</td>
+                            <td>{formatOdds(point.home)}</td>
+                            <td>{formatOdds(point.draw)}</td>
+                            <td>{formatOdds(point.away)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {matchHistory && matchHistory.votesHistory.length > 0 && (
+                  <div className="history-subsection">
+                    <h4>Votes History</h4>
+                    <table className="history-table">
+                      <thead>
+                        <tr>
+                          <th>Time</th>
+                          <th>{event.homeTeam.name} (%)</th>
+                          <th>Draw (%)</th>
+                          <th>{event.awayTeam.name} (%)</th>
+                          <th>Total Votes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {matchHistory.votesHistory.map((point, idx) => (
+                          <tr key={idx}>
+                            <td>{formatHistoryTimestamp(point.timestamp)}</td>
+                            <td>{point.home ?? '-'}</td>
+                            <td>{point.draw ?? '-'}</td>
+                            <td>{point.away ?? '-'}</td>
+                            <td>{point.total ?? '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {matchHistory && matchHistory.oddsHistory.length === 0 && matchHistory.votesHistory.length === 0 && (
+                  <p>No historical data available yet. Data will be recorded as odds and votes are refreshed.</p>
+                )}
               </div>
             )}
           </>

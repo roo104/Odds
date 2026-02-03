@@ -88,3 +88,23 @@ export interface Season {
   name: string;
   year?: string;
 }
+
+export interface OddsHistoryPoint {
+  timestamp: number;
+  home?: string;
+  draw?: string;
+  away?: string;
+}
+
+export interface VotesHistoryPoint {
+  timestamp: number;
+  home?: number;
+  draw?: number;
+  away?: number;
+  total?: number;
+}
+
+export interface MatchHistoryResponse {
+  oddsHistory: OddsHistoryPoint[];
+  votesHistory: VotesHistoryPoint[];
+}

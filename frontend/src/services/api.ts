@@ -1,4 +1,4 @@
-import {SofascoreEvent, StandingsResponse, TournamentSeasonsResponse} from '../types';
+import {MatchHistoryResponse, SofascoreEvent, StandingsResponse, TournamentSeasonsResponse} from '../types';
 
 const API_BASE_URL = 'http://localhost:8080/api/football';
 
@@ -69,5 +69,11 @@ export const footballApi = {
       console.error('getTournamentStandings error:', error);
       return null;
     }
+  },
+
+  getMatchHistory: async (eventId: number): Promise<MatchHistoryResponse> => {
+    const response = await fetch(`${API_BASE_URL}/matches/${eventId}/history`);
+    if (!response.ok) throw new Error('Failed to fetch match history');
+    return response.json();
   },
 };

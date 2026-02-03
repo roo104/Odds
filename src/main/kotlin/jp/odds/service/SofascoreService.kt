@@ -19,6 +19,8 @@ import java.time.format.DateTimeFormatter
 class SofascoreService(
     webClientBuilder: WebClient.Builder,
     private val dailyMatchDataRepository: DailyMatchDataRepository,
+    private val matchOddsHistoryRepository: jp.odds.repository.MatchOddsHistoryRepository,
+    private val matchVotesHistoryRepository: jp.odds.repository.MatchVotesHistoryRepository,
     @Value("\${odds.sofascore.allowed-leagues:}") private val allowedLeaguesConfig: String
 ) {
     private val logger = LoggerFactory.getLogger(SofascoreService::class.java)
@@ -77,6 +79,10 @@ class SofascoreService(
                 event.odds = fetchOddsForEvent(event.id)
                 event.voting = fetchVotingForEvent(event.id)
                 event.lastUpdated = now.epochSecond
+
+                // Save historical odds and votes
+                saveOddsHistory(event.id, event.odds, now)
+                saveVotesHistory(event.id, event.voting, now)
             }
 
             // Save to database (will update existing records or insert new ones)
@@ -90,7 +96,7 @@ class SofascoreService(
     }
 
     private suspend fun loadMatchesFromDatabase(matchDate: LocalDate): List<SofascoreEvent> {
-        // Convert LocalDate to timestamp range (start of day to end of day)
+        // Convert LocalDate to timestamp range (start of day to end of day) in system timezone
         val startOfDay = matchDate.atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond()
         val endOfDay = matchDate.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond()
 
@@ -165,15 +171,15 @@ class SofascoreService(
 
         val entities = events.mapNotNull { event ->
             val existing = existingRecords[event.id]
-            if (existing != null && existing.matchDate.isAfter(matchDate)) {
+            if (existing != null && existing.matchDate.isBefore(matchDate)) {
                 logger.info(
-                    "Skipping update for event ${event.id} on $matchDate; newer match_date exists: ${existing.matchDate}"
+                    "Skipping update for event ${event.id} on $matchDate; earlier match_date exists: ${existing.matchDate}"
                 )
                 return@mapNotNull null
             }
             DailyMatchData(
                 id = existing?.id, // Preserve existing ID for update, null for insert
-                matchDate = matchDate,
+                matchDate = existing?.matchDate ?: matchDate,
                 eventId = event.id,
                 startTimestamp = event.startTimestamp,
                 homeTeamId = event.homeTeam.id,
@@ -454,6 +460,11 @@ class SofascoreService(
         val eventDetails = fetchEventDetails(eventId)
         val odds = fetchOddsForEvent(eventId)
         val voting = fetchVotingForEvent(eventId)
+        val now = Instant.now()
+
+        // Save historical odds and votes
+        saveOddsHistory(eventId, odds, now)
+        saveVotesHistory(eventId, voting, now)
 
         // Throw error if we couldn't fetch any fresh data
         if (odds == null && voting == null && eventDetails == null) {
@@ -462,7 +473,6 @@ class SofascoreService(
         }
 
         // Update in database with fresh data
-        val now = Instant.now()
         val tournamentIdFixes = mapOf<Long, Long>(
             33L to 23L   // Tournament 33 (volleyball) -> Tournament 23 (Serie A)
         )
@@ -599,6 +609,51 @@ class SofascoreService(
         } catch (e: Exception) {
             logger.warn("Could not fetch standings for tournament $tournamentId, season $seasonId: ${e.message}")
             null
+        }
+    }
+
+    private suspend fun saveOddsHistory(eventId: Long, odds: Odds?, timestamp: Instant) {
+        if (odds != null && (odds.home != null || odds.draw != null || odds.away != null)) {
+            val oddsHistory = jp.odds.entity.MatchOddsHistory().apply {
+                this.eventId = eventId
+                this.oddsHome = odds.home
+                this.oddsDraw = odds.draw
+                this.oddsAway = odds.away
+                this.recordedAt = timestamp
+            }
+            withContext(Dispatchers.IO) {
+                matchOddsHistoryRepository.save(oddsHistory)
+            }
+            logger.debug("Saved odds history for event $eventId")
+        }
+    }
+
+    private suspend fun saveVotesHistory(eventId: Long, voting: Voting?, timestamp: Instant) {
+        if (voting != null && (voting.home != null || voting.draw != null || voting.away != null)) {
+            val votesHistory = jp.odds.entity.MatchVotesHistory().apply {
+                this.eventId = eventId
+                this.votingHome = voting.home
+                this.votingDraw = voting.draw
+                this.votingAway = voting.away
+                this.votingTotal = voting.total
+                this.recordedAt = timestamp
+            }
+            withContext(Dispatchers.IO) {
+                matchVotesHistoryRepository.save(votesHistory)
+            }
+            logger.debug("Saved votes history for event $eventId")
+        }
+    }
+
+    suspend fun getOddsHistory(eventId: Long): List<jp.odds.entity.MatchOddsHistory> {
+        return withContext(Dispatchers.IO) {
+            matchOddsHistoryRepository.findByEventIdOrderByRecordedAtAsc(eventId)
+        }
+    }
+
+    suspend fun getVotesHistory(eventId: Long): List<jp.odds.entity.MatchVotesHistory> {
+        return withContext(Dispatchers.IO) {
+            matchVotesHistoryRepository.findByEventIdOrderByRecordedAtAsc(eventId)
         }
     }
 }

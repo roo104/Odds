@@ -1,8 +1,6 @@
 package jp.odds.controller
 
-import jp.odds.dto.SofascoreEvent
-import jp.odds.dto.StandingsResponse
-import jp.odds.dto.TournamentSeasonsResponse
+import jp.odds.dto.*
 import jp.odds.service.SofascoreService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -71,5 +69,31 @@ class FootballMatchesController(private val sofascoreService: SofascoreService) 
         } else {
             ResponseEntity.notFound().build()
         }
+    }
+
+    @GetMapping("/matches/{eventId}/history")
+    suspend fun getMatchHistory(@PathVariable eventId: Long): MatchHistoryResponse {
+        val oddsHistory = sofascoreService.getOddsHistory(eventId)
+        val votesHistory = sofascoreService.getVotesHistory(eventId)
+
+        return MatchHistoryResponse(
+            oddsHistory = oddsHistory.map { odds ->
+                OddsHistoryPoint(
+                    timestamp = odds.recordedAt.epochSecond,
+                    home = odds.oddsHome,
+                    draw = odds.oddsDraw,
+                    away = odds.oddsAway
+                )
+            },
+            votesHistory = votesHistory.map { votes ->
+                VotesHistoryPoint(
+                    timestamp = votes.recordedAt.epochSecond,
+                    home = votes.votingHome,
+                    draw = votes.votingDraw,
+                    away = votes.votingAway,
+                    total = votes.votingTotal
+                )
+            }
+        )
     }
 }
