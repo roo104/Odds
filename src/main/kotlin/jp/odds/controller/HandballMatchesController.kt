@@ -3,7 +3,7 @@ package jp.odds.controller
 import jp.odds.dto.MatchHistoryResponse
 import jp.odds.dto.OddsHistoryPoint
 import jp.odds.dto.VotesHistoryPoint
-import jp.odds.service.SofascoreService
+import jp.odds.service.HandballService
 import jp.odds.service.response.model.SofascoreEvent
 import jp.odds.service.response.model.StandingsResponse
 import org.springframework.http.HttpStatus
@@ -15,27 +15,27 @@ import java.time.LocalDate
 @RestController
 @RequestMapping("/api/handball")
 @CrossOrigin(origins = ["http://localhost:5173", "http://localhost:3000"])
-class HandballMatchesController(private val sofascoreService: SofascoreService) {
+class HandballMatchesController(private val handballService: HandballService) {
 
     @GetMapping("/matches/today")
-    suspend fun getTodayMatches(): List<SofascoreEvent> = sofascoreService.getTodayHandballMatches()
+    suspend fun getTodayMatches(): List<SofascoreEvent> = handballService.getTodayMatches()
 
     @GetMapping("/matches/date/{date}")
     suspend fun getMatchesByDate(
         @PathVariable date: LocalDate
-    ): List<SofascoreEvent> = sofascoreService.getHandballMatchesByDate(date)
+    ): List<SofascoreEvent> = handballService.getMatchesByDate(date)
 
     @PostMapping("/matches/date/{date}/refresh")
     suspend fun refreshMatchesByDate(
         @PathVariable date: LocalDate
-    ): List<SofascoreEvent> = sofascoreService.getHandballMatchesByDate(date, forceRefresh = true)
+    ): List<SofascoreEvent> = handballService.getMatchesByDate(date, forceRefresh = true)
 
     @GetMapping("/team/{teamId}/events")
-    suspend fun getTeamEvents(@PathVariable teamId: Long): List<SofascoreEvent> = sofascoreService.getTeamEvents(teamId)
+    suspend fun getTeamEvents(@PathVariable teamId: Long): List<SofascoreEvent> = handballService.getTeamEvents(teamId)
 
     @PostMapping("/matches/{eventId}/refresh")
     suspend fun refreshSingleMatch(@PathVariable eventId: Long, @RequestParam date: String): SofascoreEvent = try {
-        sofascoreService.refreshHandballSingleMatch(eventId)
+        handballService.refreshSingleMatch(eventId)
     } catch (e: IllegalArgumentException) {
         throw ResponseStatusException(HttpStatus.NOT_FOUND, e.message, e)
     } catch (e: Exception) {
@@ -48,12 +48,12 @@ class HandballMatchesController(private val sofascoreService: SofascoreService) 
 
     @GetMapping("/tournament/{tournamentId}/season/{seasonId}/standings")
     suspend fun getTournamentStandings(@PathVariable tournamentId: Long, @PathVariable seasonId: Long): ResponseEntity<StandingsResponse> =
-        sofascoreService.getTournamentStandings(tournamentId, seasonId)?.let { ResponseEntity.ok(it) }
+        handballService.getTournamentStandings(tournamentId, seasonId)?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
 
     @GetMapping("/matches/{eventId}/history")
     suspend fun getMatchHistory(@PathVariable eventId: Long): MatchHistoryResponse = MatchHistoryResponse(
-        oddsHistory = sofascoreService.getOddsHistory(eventId).map { odds ->
+        oddsHistory = handballService.getOddsHistory(eventId).map { odds ->
             OddsHistoryPoint(
                 timestamp = odds.recordedAt.epochSecond,
                 home = odds.oddsHome,
@@ -61,7 +61,7 @@ class HandballMatchesController(private val sofascoreService: SofascoreService) 
                 away = odds.oddsAway
             )
         },
-        votesHistory = sofascoreService.getVotesHistory(eventId).map { votes ->
+        votesHistory = handballService.getVotesHistory(eventId).map { votes ->
             VotesHistoryPoint(
                 timestamp = votes.recordedAt.epochSecond,
                 home = votes.votingHome,
