@@ -181,7 +181,7 @@ class SofascoreService(
     }
 
     private fun isTopLeague(event: SofascoreEvent): Boolean =
-        event.eventFilters?.level?.let { it.contains("top-competitions") || it.contains("pro") } ?: false
+        event.eventFilters?.level?.contains("top-competitions") ?: false
 
     private suspend fun saveMatchesToDatabase(matchDate: LocalDate, events: List<SofascoreEvent>) {
         val now = Instant.now()
