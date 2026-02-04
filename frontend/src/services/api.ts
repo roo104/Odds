@@ -9,14 +9,16 @@ export const footballApi = {
     return response.json();
   },
 
-  getMatchesByDate: async (date: string): Promise<SofascoreEvent[]> => {
-    const response = await fetch(`${API_BASE_URL}/matches/date/${date}`);
+  getMatchesByDate: async (date: string, includeAllLeagues: boolean = false): Promise<SofascoreEvent[]> => {
+    const url = `${API_BASE_URL}/matches/date/${date}${includeAllLeagues ? '?includeAllLeagues=true' : ''}`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch matches by date');
     return response.json();
   },
 
-  refreshMatchesByDate: async (date: string): Promise<SofascoreEvent[]> => {
-    const response = await fetch(`${API_BASE_URL}/matches/date/${date}/refresh`, {
+  refreshMatchesByDate: async (date: string, includeAllLeagues: boolean = false): Promise<SofascoreEvent[]> => {
+    const url = `${API_BASE_URL}/matches/date/${date}/refresh${includeAllLeagues ? '?includeAllLeagues=true' : ''}`;
+    const response = await fetch(url, {
       method: 'POST',
     });
     if (!response.ok) throw new Error('Failed to refresh matches by date');

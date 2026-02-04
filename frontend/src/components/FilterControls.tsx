@@ -9,6 +9,8 @@ interface FilterControlsProps {
   setMinOdds: (value: number) => void;
   minVotePercent: number;
   setMinVotePercent: (value: number) => void;
+  filterTopLeaguesOnly: boolean;
+  setFilterTopLeaguesOnly: (value: boolean) => void;
 }
 
 function FilterControls({
@@ -20,6 +22,8 @@ function FilterControls({
   setMinOdds,
   minVotePercent,
   setMinVotePercent,
+  filterTopLeaguesOnly,
+  setFilterTopLeaguesOnly,
 }: FilterControlsProps) {
   return (
     <div className="filter-controls">
@@ -39,6 +43,14 @@ function FilterControls({
             onChange={(e) => setFilterMatchCriteria(e.target.checked)}
           />
           Show only matches that match criteria
+        </label>
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={filterTopLeaguesOnly}
+            onChange={(e) => setFilterTopLeaguesOnly(e.target.checked)}
+          />
+          Show only top leagues
         </label>
       </div>
 

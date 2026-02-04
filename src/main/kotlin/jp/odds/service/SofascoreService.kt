@@ -48,7 +48,7 @@ class SofascoreService(
         return getFootballMatchesByDate(tomorrow)
     }
 
-    suspend fun getFootballMatchesByDate(date: LocalDate, forceRefresh: Boolean = false): List<SofascoreEvent> {
+    suspend fun getFootballMatchesByDate(date: LocalDate, forceRefresh: Boolean = false, includeAllLeagues: Boolean = false): List<SofascoreEvent> {
         val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         // Check if data for this date already exists in database
@@ -69,8 +69,16 @@ class SofascoreService(
 
             logger.info("Successfully fetched ${response.events.size} matches")
 
-            val filteredEvents = filterEventsByTopLeagues(response.events)
-            logger.info("Filtered to ${filteredEvents.size} top league matches for $dateStr")
+            val filteredEvents = if (includeAllLeagues) {
+                response.events.map { event ->
+                    event.copy(isTopLeague = isTopLeague(event))
+                }
+            } else {
+                filterEventsByTopLeagues(response.events).map { event ->
+                    event.copy(isTopLeague = true)
+                }
+            }
+            logger.info("Filtered to ${filteredEvents.size} ${if (includeAllLeagues) "total" else "top league"} matches for $dateStr")
 
             // Fetch odds and voting for each event with delays (sequentially to avoid rate limiting)
             val now = Instant.now()
@@ -86,7 +94,7 @@ class SofascoreService(
             }
 
             // Save to database (will update existing records or insert new ones)
-            saveMatchesToDatabase(date, filteredEvents)
+            saveMatchesToDatabase(date, filteredEvents, includeAllLeagues)
 
             filteredEvents
         } catch (e: Exception) {
@@ -149,14 +157,22 @@ class SofascoreService(
                         total = data.votingTotal
                     )
                 } else null,
-                lastUpdated = data.lastUpdated?.epochSecond ?: 0
+                lastUpdated = data.lastUpdated?.epochSecond ?: 0,
+                isTopLeague = data.isTopLeague
             )
         }
 
-        return filterEventsByTopLeagues(events)
+        return events
     }
 
-    private suspend fun saveMatchesToDatabase(matchDate: LocalDate, events: List<SofascoreEvent>) {
+    private fun isTopLeague(event: SofascoreEvent): Boolean {
+        val tournamentName = normalize(event.tournament.name)
+        val countryName = normalize(event.tournament.category.country?.name ?: event.tournament.category.name)
+        val allowedTokens = allowedLeagueTokensByCountry[countryName] ?: return false
+        return allowedTokens.any { token -> tournamentName == token }
+    }
+
+    private suspend fun saveMatchesToDatabase(matchDate: LocalDate, events: List<SofascoreEvent>, includeAllLeagues: Boolean = false) {
         val now = Instant.now()
 
         // Load existing records to preserve IDs for updates, keyed by event_id.
@@ -201,7 +217,8 @@ class SofascoreService(
                 votingTotal = event.voting?.total,
                 statusType = event.status.type,
                 statusDescription = event.status.description,
-                lastUpdated = now
+                lastUpdated = now,
+                isTopLeague = isTopLeague(event)
             )
         }
 
@@ -551,7 +568,8 @@ class SofascoreService(
             vote = null,
             odds = odds,
             voting = voting,
-            lastUpdated = now.epochSecond
+            lastUpdated = now.epochSecond,
+            isTopLeague = updatedData.isTopLeague
         )
     }
 

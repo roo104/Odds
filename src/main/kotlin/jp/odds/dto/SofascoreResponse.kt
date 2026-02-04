@@ -22,7 +22,8 @@ data class SofascoreEvent(
     var voting: Voting? = null,
     var homeFormScore: Int? = null,
     var awayFormScore: Int? = null,
-    var lastUpdated: Long? = null
+    var lastUpdated: Long? = null,
+    var isTopLeague: Boolean? = null
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)

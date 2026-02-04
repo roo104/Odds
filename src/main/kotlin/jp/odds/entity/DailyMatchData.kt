@@ -80,5 +80,8 @@ data class DailyMatchData(
     val awayScore: Int? = null,
 
     @Column(name = "last_updated", nullable = true)
-    val lastUpdated: Instant? = null
+    val lastUpdated: Instant? = null,
+
+    @Column(name = "is_top_league", nullable = false)
+    val isTopLeague: Boolean = true
 )

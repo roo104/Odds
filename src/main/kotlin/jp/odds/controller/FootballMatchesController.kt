@@ -17,12 +17,18 @@ class FootballMatchesController(private val sofascoreService: SofascoreService) 
     suspend fun getTodayMatches(): List<SofascoreEvent> = sofascoreService.getTodayFootballMatches()
 
     @GetMapping("/matches/date/{date}")
-    suspend fun getMatchesByDate(@PathVariable date: String): List<SofascoreEvent> = sofascoreService.getFootballMatchesByDate(LocalDate.parse(date))
+    suspend fun getMatchesByDate(
+        @PathVariable date: String,
+        @RequestParam(defaultValue = "false") includeAllLeagues: Boolean
+    ): List<SofascoreEvent> = sofascoreService.getFootballMatchesByDate(LocalDate.parse(date), includeAllLeagues = includeAllLeagues)
 
     @PostMapping("/matches/date/{date}/refresh")
-    suspend fun refreshMatchesByDate(@PathVariable date: String): List<SofascoreEvent> {
+    suspend fun refreshMatchesByDate(
+        @PathVariable date: String,
+        @RequestParam(defaultValue = "false") includeAllLeagues: Boolean
+    ): List<SofascoreEvent> {
         val localDate = LocalDate.parse(date)
-        return sofascoreService.getFootballMatchesByDate(localDate, forceRefresh = true)
+        return sofascoreService.getFootballMatchesByDate(localDate, forceRefresh = true, includeAllLeagues = includeAllLeagues)
     }
 
     @GetMapping("/team/{teamId}/events")

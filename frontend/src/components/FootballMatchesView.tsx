@@ -26,10 +26,12 @@ function FootballMatchesView() {
   const [selectedEvent, setSelectedEvent] = useState<SofascoreEvent | null>(null);
   const [refreshingMatchId, setRefreshingMatchId] = useState<number | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [includeAllLeagues, setIncludeAllLeagues] = useState(false);
+  const [filterTopLeaguesOnly, setFilterTopLeaguesOnly] = useState(false);
 
   useEffect(() => {
-    loadMatches(currentDate);
-  }, [currentDate]);
+    loadMatches(currentDate, false, includeAllLeagues);
+  }, [currentDate, includeAllLeagues]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info') => {
     const id = Date.now();
@@ -40,13 +42,13 @@ function FootballMatchesView() {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  const loadMatches = async (date: Date, forceRefresh: boolean = false) => {
+  const loadMatches = async (date: Date, forceRefresh: boolean = false, includeAll: boolean = includeAllLeagues) => {
     setLoading(true);
     try {
       const dateStr = date.toISOString().split('T')[0];
       const matches = forceRefresh
-        ? await footballApi.refreshMatchesByDate(dateStr)
-        : await footballApi.getMatchesByDate(dateStr);
+        ? await footballApi.refreshMatchesByDate(dateStr, includeAll)
+        : await footballApi.getMatchesByDate(dateStr, includeAll);
       setAllMatches(matches);
       setSelectedCountries(new Set());
     } catch (error) {
@@ -57,7 +59,11 @@ function FootballMatchesView() {
   };
 
   const handleRefresh = () => {
-    loadMatches(currentDate, true);
+    loadMatches(currentDate, true, includeAllLeagues);
+  };
+
+  const handleToggleAllLeagues = () => {
+    setIncludeAllLeagues(!includeAllLeagues);
   };
 
   const parseOdds = (fractionalOdds?: string): number => {
@@ -100,6 +106,10 @@ function FootballMatchesView() {
       filtered = filtered.filter(shouldHighlight);
     }
 
+    if (filterTopLeaguesOnly) {
+      filtered = filtered.filter(m => m.isTopLeague !== false);
+    }
+
     if (selectedCountries.size > 0) {
       filtered = filtered.filter(m => 
         selectedCountries.has(m.tournament.category.country?.name || '')
@@ -110,14 +120,29 @@ function FootballMatchesView() {
   };
 
   const availableCountries = useMemo(() => {
+    const matchesToConsider = filterTopLeaguesOnly
+      ? allMatches.filter(m => m.isTopLeague !== false)
+      : allMatches;
+
     return Array.from(
       new Set(
-        allMatches
+        matchesToConsider
           .map(m => m.tournament.category.country?.name)
           .filter((name): name is string => !!name)
       )
     ).sort();
-  }, [allMatches]);
+  }, [allMatches, filterTopLeaguesOnly]);
+
+  // Clear selected countries when filter changes and they're no longer available
+  useEffect(() => {
+    if (selectedCountries.size > 0) {
+      const availableSet = new Set(availableCountries);
+      const stillAvailable = Array.from(selectedCountries).filter(c => availableSet.has(c));
+      if (stillAvailable.length !== selectedCountries.size) {
+        setSelectedCountries(new Set(stillAvailable));
+      }
+    }
+  }, [availableCountries]);
 
   const toggleCountry = (country: string) => {
     setSelectedCountries(prev => {
@@ -295,6 +320,8 @@ function FootballMatchesView() {
         onToday={handleToday}
         onRefresh={handleRefresh}
         isRefreshing={loading}
+        includeAllLeagues={includeAllLeagues}
+        onToggleAllLeagues={handleToggleAllLeagues}
       />
 
       <FilterControls
@@ -306,6 +333,8 @@ function FootballMatchesView() {
         setMinOdds={setMinOdds}
         minVotePercent={minVotePercent}
         setMinVotePercent={setMinVotePercent}
+        filterTopLeaguesOnly={filterTopLeaguesOnly}
+        setFilterTopLeaguesOnly={setFilterTopLeaguesOnly}
       />
 
       {availableCountries.length > 0 && (

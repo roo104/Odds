@@ -12,6 +12,7 @@ export interface SofascoreEvent {
   homeFormScore?: number;
   awayFormScore?: number;
   lastUpdated?: number;
+  isTopLeague?: boolean;
 }
 
 export interface Team {
