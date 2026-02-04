@@ -49,6 +49,15 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
     onRefreshMatch(eventId);
   };
 
+  const handleRowClick = (e: React.MouseEvent, match: SofascoreEvent) => {
+    // Don't trigger click if user is selecting text
+    const selection = window.getSelection();
+    if (selection && selection.toString().length > 0) {
+      return;
+    }
+    onMatchClick(match);
+  };
+
   const getHighestVote = (match: SofascoreEvent): 'home' | 'draw' | 'away' | null => {
     if (!match.voting) return null;
     const homeVote = match.voting.home ?? 0;
@@ -91,7 +100,7 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
             return (
               <tr
                 key={match.id}
-                onClick={() => onMatchClick(match)}
+                onClick={(e) => handleRowClick(e, match)}
                 className={shouldHighlight(match) ? 'highlight-row' : ''}
               >
                 <td>{formatDateTime(match.startTimestamp)}</td>
