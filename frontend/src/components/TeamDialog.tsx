@@ -401,6 +401,30 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
                 {matchHistory && matchHistory.votesHistory.length > 0 && (
                   <div className="history-subsection">
                     <h4>Votes History</h4>
+                    {matchHistory.votesHistory.length > 1 && (
+                      <div style={{ width: '100%', height: 300, marginBottom: '20px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={matchHistory.votesHistory.map(point => ({
+                              time: formatHistoryTimestamp(point.timestamp),
+                              home: point.home ?? null,
+                              draw: point.draw ?? null,
+                              away: point.away ?? null,
+                            }))}
+                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="time" />
+                            <YAxis label={{ value: 'Votes (%)', angle: -90, position: 'insideLeft' }} domain={[0, 100]} />
+                            <Tooltip />
+                            <Legend />
+                            <Line type="monotone" dataKey="home" stroke="#8884d8" name={event.homeTeam.name} />
+                            <Line type="monotone" dataKey="draw" stroke="#82ca9d" name="Draw" />
+                            <Line type="monotone" dataKey="away" stroke="#ffc658" name={event.awayTeam.name} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                     <table className="history-table">
                       <thead>
                         <tr>
