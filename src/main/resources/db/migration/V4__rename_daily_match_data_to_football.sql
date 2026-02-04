@@ -1,0 +1,1 @@
+RENAME TABLE daily_match_data TO daily_football_match_data;

@@ -5,7 +5,7 @@ import java.time.Instant
 import java.time.LocalDate
 
 @Entity
-@Table(name = "daily_match_data", uniqueConstraints = [
+@Table(name = "daily_football_match_data", uniqueConstraints = [
     UniqueConstraint(columnNames = ["event_id"])
 ])
 data class DailyMatchData(
