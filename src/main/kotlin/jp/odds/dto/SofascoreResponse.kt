@@ -17,6 +17,7 @@ data class SofascoreEvent(
     val awayScore: Score? = null,
     val status: Status,
     val tournament: Tournament,
+    val season: Season? = null,
     val vote: VoteData? = null,
     var odds: Odds? = null,
     var voting: Voting? = null,

@@ -54,16 +54,6 @@ class FootballMatchesController(private val sofascoreService: SofascoreService) 
         }
     }
 
-    @GetMapping("/tournament/{tournamentId}/seasons")
-    suspend fun getTournamentSeasons(@PathVariable tournamentId: Long): ResponseEntity<TournamentSeasonsResponse> {
-        val result = sofascoreService.getTournamentSeasons(tournamentId)
-        return if (result != null) {
-            ResponseEntity.ok(result)
-        } else {
-            ResponseEntity.notFound().build()
-        }
-    }
-
     @GetMapping("/tournament/{tournamentId}/season/{seasonId}/standings")
     suspend fun getTournamentStandings(
         @PathVariable tournamentId: Long,

@@ -39,34 +39,13 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
       // Try to fetch league standings if it's a league tournament
       // Skip if tournament ID is 0 (invalid/not saved properly)
       console.log('Tournament ID:', event.tournament.id, 'Tournament name:', event.tournament.name, 'Category:', event.tournament.category.name);
-      if (event.tournament.id > 0) {
-        // First get the seasons for this tournament
-        console.log('Fetching seasons for tournament:', event.tournament.id);
-        const seasonsResponse = await footballApi.getTournamentSeasons(event.tournament.id);
-        console.log('Seasons response:', seasonsResponse);
-        if (seasonsResponse && seasonsResponse.seasons && seasonsResponse.seasons.length > 0) {
-          // Use the most recent season (first in the list)
-          const currentSeason = seasonsResponse.seasons[0];
-          console.log('Using season:', currentSeason.name, '(ID:', currentSeason.id, ')');
-
-          // Skip if season name indicates non-football sport
-          const seasonName = currentSeason.name || '';
-          if (seasonName.toLowerCase().includes('fivb') ||
-              seasonName.toLowerCase().includes('volleyball') ||
-              seasonName.toLowerCase().includes('basketball') ||
-              seasonName.toLowerCase().includes('world championship')) {
-            console.log('Skipping standings - non-football season:', seasonName);
-            setStandings(null);
-          } else {
-            const standingsData = await footballApi.getTournamentStandings(event.tournament.id, currentSeason.id);
-            console.log('Standings data for', event.tournament.name, ':', standingsData);
-            setStandings(standingsData);
-          }
-        } else {
-          console.log('No seasons found for tournament');
-        }
+      if (event.tournament.id > 0 && event.season?.id) {
+        console.log('Fetching standings for tournament:', event.tournament.id, 'season:', event.season.id);
+        const standingsData = await footballApi.getTournamentStandings(event.tournament.id, event.season.id);
+        console.log('Standings data for', event.tournament.name, ':', standingsData);
+        setStandings(standingsData);
       } else {
-        console.log('Skipping standings fetch - tournament ID is 0');
+        console.log('Skipping standings fetch - tournament ID is 0 or season not available');
       }
     } catch (error) {
       console.error('Failed to load team events:', error);

@@ -40,6 +40,9 @@ data class DailyMatchData(
     @Column(name = "tournament_name", nullable = false)
     val tournamentName: String = "",
 
+    @Column(name = "season_id")
+    val seasonId: Long? = null,
+
     @Column(name = "category_name", nullable = false)
     val categoryName: String = "",
 

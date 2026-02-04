@@ -7,6 +7,7 @@ export interface SofascoreEvent {
   awayScore?: Score;
   status: Status;
   tournament: Tournament;
+  season?: Season;
   odds?: Odds;
   voting?: Voting;
   homeFormScore?: number;

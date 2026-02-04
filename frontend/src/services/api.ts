@@ -1,4 +1,4 @@
-import {MatchHistoryResponse, SofascoreEvent, StandingsResponse, TournamentSeasonsResponse} from '../types';
+import {MatchHistoryResponse, SofascoreEvent, StandingsResponse} from '../types';
 
 const API_BASE_URL = 'http://localhost:8080/api/football';
 
@@ -37,23 +37,6 @@ export const footballApi = {
     });
     if (!response.ok) throw new Error('Failed to refresh single match');
     return response.json();
-  },
-
-  getTournamentSeasons: async (tournamentId: number): Promise<TournamentSeasonsResponse | null> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/tournament/${tournamentId}/seasons`);
-      console.log('getTournamentSeasons response status:', response.status, 'for tournament:', tournamentId);
-      if (!response.ok) {
-        console.warn('getTournamentSeasons failed:', response.status, response.statusText);
-        return null;
-      }
-      const data = await response.json();
-      console.log('getTournamentSeasons data:', data);
-      return data;
-    } catch (error) {
-      console.error('getTournamentSeasons error:', error);
-      return null;
-    }
   },
 
   getTournamentStandings: async (tournamentId: number, seasonId: number): Promise<StandingsResponse | null> => {
