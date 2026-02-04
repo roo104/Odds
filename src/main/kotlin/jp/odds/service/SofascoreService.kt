@@ -74,16 +74,21 @@ class SofascoreService(
                 .get()
                 .uri(uri)
                 .retrieve()
-                .awaitBody<SofascoreEventsResponse>()
+                .awaitBody<ScheduledEventsResponse>()
 
             logger.info("Successfully fetched ${response.events.size} matches")
 
+            // Convert ScheduledEvent to SofascoreEvent
+            val events = response.events.map { scheduledEvent ->
+                convertScheduledEventToSofascoreEvent(scheduledEvent)
+            }
+
             val filteredEvents = if (includeAllLeagues) {
-                response.events.map { event ->
+                events.map { event ->
                     event.copy(isTopLeague = isTopLeague(event))
                 }
             } else {
-                filterEventsByTopLeagues(response.events).map { event ->
+                filterEventsByTopLeagues(events).map { event ->
                     event.copy(isTopLeague = true)
                 }
             }
@@ -193,7 +198,7 @@ class SofascoreService(
 
         val entities = events.mapNotNull { event ->
             val existing = existingRecords[event.id]
-            if (existing != null && existing.matchDate.isBefore(matchDate)) {
+            if (existing?.matchDate?.isBefore(matchDate) == true) {
                 logger.info(
                     "Skipping update for event ${event.id} on $matchDate; earlier match_date exists: ${existing.matchDate}"
                 )
@@ -256,20 +261,18 @@ class SofascoreService(
                         it.marketName.contains("Match winner", ignoreCase = true)
             }
 
-            if (fullTimeMarket != null) {
-                logger.debug("Found market: ${fullTimeMarket.marketName} with ${fullTimeMarket.choices?.size} choices")
-            } else {
-                logger.debug("No full time market found for event $eventId")
-            }
+            fullTimeMarket?.let {
+                logger.debug("Found market: ${it.marketName} with ${it.choices?.size} choices")
+            } ?: logger.debug("No full time market found for event $eventId")
 
             fullTimeMarket?.choices?.let { choices ->
-                val odds = Odds(
+                Odds(
                     home = choices.find { it.name == "1" }?.fractionalValue,
                     draw = choices.find { it.name == "X" }?.fractionalValue,
                     away = choices.find { it.name == "2" }?.fractionalValue
-                )
-                logger.debug("Extracted odds for event {}: {}", eventId, odds)
-                odds
+                ).also { odds ->
+                    logger.debug("Extracted odds for event {}: {}", eventId, odds)
+                }
             }
         } catch (e: Exception) {
             logger.debug("Could not fetch odds for event $eventId: ${e.message}")
@@ -289,16 +292,12 @@ class SofascoreService(
 
             response.vote?.let { vote ->
                 val total = (vote.vote1 ?: 0) + (vote.vote2 ?: 0) + (vote.voteX ?: 0)
-                if (total > 0) {
-                    Voting(
-                        home = ((vote.vote1 ?: 0) * 100 / total),
-                        draw = ((vote.voteX ?: 0) * 100 / total),
-                        away = ((vote.vote2 ?: 0) * 100 / total),
-                        total = total
-                    )
-                } else {
-                    null
-                }
+                Voting(
+                    home = ((vote.vote1 ?: 0) * 100 / total),
+                    draw = ((vote.voteX ?: 0) * 100 / total),
+                    away = ((vote.vote2 ?: 0) * 100 / total),
+                    total = total
+                ).takeIf { total > 0 }
             }
         } catch (e: Exception) {
             logger.warn("Could not fetch voting for event $eventId: ${e.message}", e)
@@ -454,17 +453,16 @@ class SofascoreService(
     }
 
     private suspend fun saveOddsHistory(eventId: Long, odds: Odds?, timestamp: Instant) {
-        if (odds != null && (odds.home != null || odds.draw != null || odds.away != null)) {
+        odds?.takeIf { it.home != null || it.draw != null || it.away != null }?.let {
             // Check if the latest odds entry has the same values
             val latestOdds = withContext(Dispatchers.IO) {
                 matchOddsHistoryRepository.findFirstByEventIdOrderByRecordedAtDesc(eventId)
             }
 
             // Only save if values have changed
-            if (latestOdds == null ||
-                latestOdds.oddsHome != odds.home ||
-                latestOdds.oddsDraw != odds.draw ||
-                latestOdds.oddsAway != odds.away
+            if (latestOdds?.oddsHome != odds.home ||
+                latestOdds?.oddsDraw != odds.draw ||
+                latestOdds?.oddsAway != odds.away
             ) {
 
                 val oddsHistory = jp.odds.entity.MatchOddsHistory().apply {
@@ -485,18 +483,17 @@ class SofascoreService(
     }
 
     private suspend fun saveVotesHistory(eventId: Long, voting: Voting?, timestamp: Instant) {
-        if (voting != null && (voting.home != null || voting.draw != null || voting.away != null)) {
+        voting?.takeIf { it.home != null || it.draw != null || it.away != null }?.let {
             // Check if the latest votes entry has the same values
             val latestVotes = withContext(Dispatchers.IO) {
                 matchVotesHistoryRepository.findFirstByEventIdOrderByRecordedAtDesc(eventId)
             }
 
             // Only save if values have changed
-            if (latestVotes == null ||
-                latestVotes.votingHome != voting.home ||
-                latestVotes.votingDraw != voting.draw ||
-                latestVotes.votingAway != voting.away ||
-                latestVotes.votingTotal != voting.total
+            if (latestVotes?.votingHome != voting.home ||
+                latestVotes?.votingDraw != voting.draw ||
+                latestVotes?.votingAway != voting.away ||
+                latestVotes?.votingTotal != voting.total
             ) {
 
                 val votesHistory = jp.odds.entity.MatchVotesHistory().apply {
@@ -527,5 +524,46 @@ class SofascoreService(
         return withContext(Dispatchers.IO) {
             matchVotesHistoryRepository.findByEventIdOrderByRecordedAtAsc(eventId)
         }
+    }
+
+    private fun convertScheduledEventToSofascoreEvent(scheduledEvent: ScheduledEvent): SofascoreEvent {
+        return SofascoreEvent(
+            id = scheduledEvent.id,
+            startTimestamp = scheduledEvent.startTimestamp,
+            homeTeam = Team(
+                id = scheduledEvent.homeTeam.id,
+                name = scheduledEvent.homeTeam.name,
+                country = scheduledEvent.homeTeam.country?.let { Country(it.name) }
+            ),
+            awayTeam = Team(
+                id = scheduledEvent.awayTeam.id,
+                name = scheduledEvent.awayTeam.name,
+                country = scheduledEvent.awayTeam.country?.let { Country(it.name) }
+            ),
+            homeScore = scheduledEvent.homeScore?.let {
+                Score(current = it.current, display = it.display)
+            },
+            awayScore = scheduledEvent.awayScore?.let {
+                Score(current = it.current, display = it.display)
+            },
+            status = scheduledEvent.status,
+            tournament = Tournament(
+                id = scheduledEvent.tournament.id,
+                name = scheduledEvent.tournament.name,
+                category = Category(
+                    name = scheduledEvent.tournament.category.name,
+                    country = scheduledEvent.tournament.category.country?.let { Country(it.name) }
+                )
+            ),
+            season = scheduledEvent.season,
+            vote = null,
+            eventFilters = scheduledEvent.eventFilters,
+            odds = null,
+            voting = null,
+            homeFormScore = null,
+            awayFormScore = null,
+            lastUpdated = null,
+            isTopLeague = null
+        )
     }
 }

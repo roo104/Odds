@@ -8,6 +8,40 @@ data class SofascoreEventsResponse(
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
+data class ScheduledEventsResponse(
+    val events: List<ScheduledEvent>
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class ScheduledEvent(
+    val id: Long,
+    val slug: String? = null,
+    val startTimestamp: Long,
+    val customId: String? = null,
+    val status: Status,
+    val winnerCode: Int? = null,
+    val homeTeam: ScheduledTeam,
+    val awayTeam: ScheduledTeam,
+    val homeScore: DetailedScore? = null,
+    val awayScore: DetailedScore? = null,
+    val tournament: ScheduledTournament,
+    val season: Season? = null,
+    val roundInfo: RoundInfo? = null,
+    val time: TimeInfo? = null,
+    val changes: Changes? = null,
+    val hasGlobalHighlights: Boolean? = null,
+    val hasXg: Boolean? = null,
+    val hasEventPlayerStatistics: Boolean? = null,
+    val hasEventPlayerHeatMap: Boolean? = null,
+    val detailId: Int? = null,
+    val crowdsourcingDataDisplayEnabled: Boolean? = null,
+    val finalResultOnly: Boolean? = null,
+    val feedLocked: Boolean? = null,
+    val isEditor: Boolean? = null,
+    val eventFilters: EventFilter? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class SofascoreEvent(
     val id: Long,
     val startTimestamp: Long,
@@ -163,4 +197,117 @@ data class EventFilter(
     val category: List<String>? = null,
     val level: List<String>? = null,
     val gender: List<String>? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class ScheduledTeam(
+    val id: Long,
+    val name: String,
+    val slug: String? = null,
+    val shortName: String? = null,
+    val gender: String? = null,
+    val sport: Sport? = null,
+    val userCount: Int? = null,
+    val nameCode: String? = null,
+    val disabled: Boolean? = null,
+    val national: Boolean? = null,
+    val type: Int? = null,
+    val country: CountryInfo? = null,
+    val subTeams: List<Team>? = null,
+    val teamColors: TeamColors? = null,
+    val fieldTranslations: FieldTranslations? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class Sport(
+    val id: Int,
+    val name: String,
+    val slug: String? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class CountryInfo(
+    val alpha2: String? = null,
+    val alpha3: String? = null,
+    val name: String? = null,
+    val slug: String? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class TeamColors(
+    val primary: String? = null,
+    val secondary: String? = null,
+    val text: String? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class FieldTranslations(
+    val nameTranslation: Map<String, String>? = null,
+    val shortNameTranslation: Map<String, String>? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class DetailedScore(
+    val current: Int? = null,
+    val display: Int? = null,
+    val period1: Int? = null,
+    val period2: Int? = null,
+    val normaltime: Int? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class ScheduledTournament(
+    val id: Long,
+    val name: String,
+    val slug: String? = null,
+    val category: ScheduledCategory,
+    val uniqueTournament: UniqueTournament? = null,
+    val priority: Int? = null,
+    val fieldTranslations: FieldTranslations? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class ScheduledCategory(
+    val id: Int,
+    val name: String,
+    val slug: String? = null,
+    val sport: Sport? = null,
+    val country: CountryInfo? = null,
+    val flag: String? = null,
+    val alpha2: String? = null,
+    val fieldTranslations: FieldTranslations? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class UniqueTournament(
+    val id: Int,
+    val name: String,
+    val slug: String? = null,
+    val category: ScheduledCategory? = null,
+    val userCount: Int? = null,
+    val hasPerformanceGraphFeature: Boolean? = null,
+    val country: Map<String, Any>? = null,
+    val hasEventPlayerStatistics: Boolean? = null,
+    val displayInverseHomeAwayTeams: Boolean? = null,
+    val fieldTranslations: FieldTranslations? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class RoundInfo(
+    val round: Int? = null,
+    val name: String? = null,
+    val slug: String? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class TimeInfo(
+    val injuryTime1: Int? = null,
+    val injuryTime2: Int? = null,
+    val currentPeriodStartTimestamp: Long? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class Changes(
+    val changes: List<String>? = null,
+    val changeTimestamp: Long? = null
 )
