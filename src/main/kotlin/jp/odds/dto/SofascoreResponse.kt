@@ -19,6 +19,7 @@ data class SofascoreEvent(
     val tournament: Tournament,
     val season: Season? = null,
     val vote: VoteData? = null,
+    val eventFilters: EventFilter? = null,
     var odds: Odds? = null,
     var voting: Voting? = null,
     var homeFormScore: Int? = null,
@@ -155,4 +156,11 @@ data class Season(
     val id: Long,
     val name: String,
     val year: String? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class EventFilter(
+    val category: List<String>? = null,
+    val level: List<String>? = null,
+    val gender: List<String>? = null
 )

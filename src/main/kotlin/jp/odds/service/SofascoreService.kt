@@ -3,15 +3,15 @@ package jp.odds.service
 import jp.odds.dto.*
 import jp.odds.entity.DailyMatchData
 import jp.odds.repository.DailyMatchDataRepository
+import jp.odds.repository.MatchOddsHistoryRepository
+import jp.odds.repository.MatchVotesHistoryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import org.springframework.web.reactive.function.client.awaitBody
-import java.text.Normalizer
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -20,17 +20,21 @@ import java.time.format.DateTimeFormatter
 class SofascoreService(
     webClientBuilder: WebClient.Builder,
     private val dailyMatchDataRepository: DailyMatchDataRepository,
-    private val matchOddsHistoryRepository: jp.odds.repository.MatchOddsHistoryRepository,
-    private val matchVotesHistoryRepository: jp.odds.repository.MatchVotesHistoryRepository,
-    @Value($$"${odds.sofascore.allowed-leagues:}") private val allowedLeaguesConfig: String
+    private val matchOddsHistoryRepository: MatchOddsHistoryRepository,
+    private val matchVotesHistoryRepository: MatchVotesHistoryRepository
 ) {
     private val logger = LoggerFactory.getLogger(SofascoreService::class.java)
-    private val allowedLeagueTokensByCountry = parseAllowedLeagues(allowedLeaguesConfig)
 
     private val webClient = webClientBuilder
         .baseUrl("https://api.sofascore.com/api/v1")
-        .defaultHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36")
-        .defaultHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+        .defaultHeader(
+            "User-Agent",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+        )
+        .defaultHeader(
+            "Accept",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+        )
         .defaultHeader("Accept-Language", "en-US,en;q=0.9")
         .defaultHeader("Accept-Encoding", "gzip, deflate, br, zstd")
         .defaultHeader("Cache-Control", "max-age=0")
@@ -49,7 +53,11 @@ class SofascoreService(
         return getFootballMatchesByDate(tomorrow)
     }
 
-    suspend fun getFootballMatchesByDate(date: LocalDate, forceRefresh: Boolean = false, includeAllLeagues: Boolean = false): List<SofascoreEvent> {
+    suspend fun getFootballMatchesByDate(
+        date: LocalDate,
+        forceRefresh: Boolean = false,
+        includeAllLeagues: Boolean = false
+    ): List<SofascoreEvent> {
         val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         // Check if data for this date already exists in database
@@ -167,12 +175,8 @@ class SofascoreService(
         return events
     }
 
-    private fun isTopLeague(event: SofascoreEvent): Boolean {
-        val tournamentName = normalize(event.tournament.name)
-        val countryName = normalize(event.tournament.category.country?.name ?: event.tournament.category.name)
-        val allowedTokens = allowedLeagueTokensByCountry[countryName] ?: return false
-        return allowedTokens.any { token -> tournamentName == token }
-    }
+    private fun isTopLeague(event: SofascoreEvent): Boolean =
+        event.eventFilters?.level?.let { it.contains("top-competitions") || it.contains("pro") } ?: false
 
     private suspend fun saveMatchesToDatabase(matchDate: LocalDate, events: List<SofascoreEvent>) {
         val now = Instant.now()
@@ -232,120 +236,7 @@ class SofascoreService(
     }
 
     private fun filterEventsByTopLeagues(events: List<SofascoreEvent>): List<SofascoreEvent> {
-        if (events.isEmpty()) {
-            return events
-        }
-
-        return events.filter { event ->
-            val tournamentName = normalize(event.tournament.name)
-            val countryName = normalize(event.tournament.category.country?.name ?: event.tournament.category.name)
-            val allowedTokens = allowedLeagueTokensByCountry[countryName] ?: return@filter false
-            allowedTokens.any { token -> tournamentName == token }
-        }
-    }
-
-    private fun parseAllowedLeagues(config: String): Map<String, Set<String>> {
-        if (config.isBlank()) {
-            return defaultAllowedLeagueTokens()
-        }
-
-        val entries = config.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-        val parsed = mutableMapOf<String, MutableSet<String>>()
-
-        entries.forEach { entry ->
-            val parts = entry.split(":", limit = 2)
-            if (parts.size != 2) {
-                logger.warn("Ignoring invalid allowed league entry: '$entry' (expected Country:League)")
-                return@forEach
-            }
-            val country = normalize(parts[0])
-            val league = normalize(parts[1])
-            if (country.isNotBlank() && league.isNotBlank()) {
-                parsed.getOrPut(country) { mutableSetOf() }.add(league)
-            }
-        }
-
-        if (parsed.isEmpty()) {
-            logger.warn("No valid allowed leagues configured, using defaults")
-            return defaultAllowedLeagueTokens()
-        }
-
-        return parsed
-    }
-
-    private fun defaultAllowedLeagueTokens(): Map<String, Set<String>> {
-        return mapOf(
-            "albania" to setOf("kategoria superiore", "albanian cup"),
-            "andorra" to setOf("primera divisio", "copa constitucio"),
-            "armenia" to setOf("premier league", "armenian cup"),
-            "austria" to setOf("bundesliga", "austrian cup"),
-            "azerbaijan" to setOf("premier league", "azerbaijan cup"),
-            "belarus" to setOf("premier league", "belarusian cup"),
-            "belgium" to setOf("jupiler pro league", "belgian cup"),
-            "bosnia and herzegovina" to setOf("premier league", "bosnia and herzegovina cup"),
-            "bulgaria" to setOf("parva liga", "bulgarian cup"),
-            "croatia" to setOf("1. hnl", "prva hnl", "croatian cup"),
-            "cyprus" to setOf("first division", "cypriot cup"),
-            "czech republic" to setOf("first league", "1. liga", "czech cup"),
-            "denmark" to setOf("superliga", "superligaen", "danish superliga", "dbu pokalen"),
-            "england" to setOf("premier league", "fa cup"),
-            "estonia" to setOf("meistriliiga", "estonian cup"),
-            "faroe islands" to setOf("premier league", "faroe islands cup"),
-            "finland" to setOf("veikkausliiga", "finnish cup"),
-            "france" to setOf("ligue 1", "coupe de france"),
-            "georgia" to setOf("erovnuli liga", "georgian cup"),
-            "germany" to setOf("bundesliga", "dfb pokal"),
-            "gibraltar" to setOf("national league", "gibraltar cup"),
-            "greece" to setOf("super league", "greek cup"),
-            "hungary" to setOf("nb i", "hungarian cup"),
-            "iceland" to setOf("besta deild", "icelandic cup"),
-            "ireland" to setOf("premier division", "fai cup"),
-            "israel" to setOf("premier league", "israel state cup"),
-            "italy" to setOf("serie a", "coppa italia"),
-            "kazakhstan" to setOf("premier league", "kazakhstan cup"),
-            "kosovo" to setOf("superliga", "kosovar cup"),
-            "latvia" to setOf("virsliga", "latvian cup"),
-            "lithuania" to setOf("a lyga", "lithuanian cup"),
-            "luxembourg" to setOf("national division", "luxembourg cup"),
-            "malta" to setOf("premier league", "maltese cup"),
-            "moldova" to setOf("super liga", "moldovan cup"),
-            "montenegro" to setOf("first league", "montenegrin cup"),
-            "netherlands" to setOf("eredivisie", "knvb beker"),
-            "north macedonia" to setOf("first league", "macedonian cup"),
-            "northern ireland" to setOf("premiership", "irish cup"),
-            "norway" to setOf("eliteserien", "nm cupen"),
-            "poland" to setOf("ekstraklasa", "polish cup"),
-            "portugal" to setOf("primeira liga", "liga portugal betclic", "taca de portugal"),
-            "romania" to setOf("liga i", "romanian cup"),
-            "russia" to setOf("premier league", "russian cup"),
-            "san marino" to setOf("campionato sammarinese", "coppa titano"),
-            "scotland" to setOf("premiership", "scottish cup"),
-            "serbia" to setOf("super liga", "serbian cup"),
-            "slovakia" to setOf("super liga", "slovak cup"),
-            "slovenia" to setOf("prvaliga", "slovenian cup"),
-            "spain" to setOf("laliga", "copa del rey"),
-            "sweden" to setOf("allsvenskan", "svenska cupen"),
-            "switzerland" to setOf("super league", "swiss cup"),
-            "turkey" to setOf("super lig", "turkish cup"),
-            "ukraine" to setOf("premier league", "ukrainian cup"),
-            "wales" to setOf("premier league", "welsh cup"),
-            "argentina" to setOf("primera division", "liga profesional", "copa argentina"),
-            "bolivia" to setOf("division profesional", "copa bolivia"),
-            "brazil" to setOf("serie a", "brasileirao", "copa do brasil"),
-            "chile" to setOf("primera division", "copa chile"),
-            "colombia" to setOf("primera a", "copa colombia"),
-            "ecuador" to setOf("liga pro", "copa ecuador"),
-            "paraguay" to setOf("primera division", "copa paraguay"),
-            "peru" to setOf("liga 1", "copa peru"),
-            "uruguay" to setOf("primera division", "copa uruguay"),
-            "venezuela" to setOf("primera division", "copa venezuela")
-        )
-    }
-
-    private fun normalize(value: String?): String {
-        val safeValue = value ?: ""
-        val normalized = Normalizer.normalize(safeValue, Normalizer.Form.NFD)
-        return normalized.replace("\\p{M}+".toRegex(), "").lowercase().trim()
+        return events.filter { event -> isTopLeague(event) }
     }
 
     suspend fun fetchOddsForEvent(eventId: Long): Odds? {
@@ -441,7 +332,7 @@ class SofascoreService(
 
             logger.debug("Fetched event details for $eventId: status=${response.event?.status?.description}")
             response.event
-        } catch (_: org.springframework.web.reactive.function.client.WebClientResponseException.NotFound) {
+        } catch (_: WebClientResponseException.NotFound) {
             logger.debug("Event $eventId not found (404)")
             null
         } catch (e: Exception) {
@@ -477,8 +368,10 @@ class SofascoreService(
 
         // Update in database with fresh data
         val refreshedTournamentId = eventDetails?.tournament?.id?.takeIf { it > 0 } ?: existingData.tournamentId
-        val refreshedTournamentName = eventDetails?.tournament?.name?.takeIf { it.isNotBlank() } ?: existingData.tournamentName
-        val refreshedCategoryName = eventDetails?.tournament?.category?.name?.takeIf { it.isNotBlank() } ?: existingData.categoryName
+        val refreshedTournamentName =
+            eventDetails?.tournament?.name?.takeIf { it.isNotBlank() } ?: existingData.tournamentName
+        val refreshedCategoryName =
+            eventDetails?.tournament?.category?.name?.takeIf { it.isNotBlank() } ?: existingData.categoryName
         val refreshedSeasonId = eventDetails?.season?.id
 
         val updatedData = existingData.copy(
@@ -571,7 +464,8 @@ class SofascoreService(
             if (latestOdds == null ||
                 latestOdds.oddsHome != odds.home ||
                 latestOdds.oddsDraw != odds.draw ||
-                latestOdds.oddsAway != odds.away) {
+                latestOdds.oddsAway != odds.away
+            ) {
 
                 val oddsHistory = jp.odds.entity.MatchOddsHistory().apply {
                     this.eventId = eventId
@@ -602,7 +496,8 @@ class SofascoreService(
                 latestVotes.votingHome != voting.home ||
                 latestVotes.votingDraw != voting.draw ||
                 latestVotes.votingAway != voting.away ||
-                latestVotes.votingTotal != voting.total) {
+                latestVotes.votingTotal != voting.total
+            ) {
 
                 val votesHistory = jp.odds.entity.MatchVotesHistory().apply {
                     this.eventId = eventId
