@@ -12,14 +12,20 @@ interface TeamDialogProps {
 function TeamDialog({ event, onClose }: TeamDialogProps) {
   const [homeTeamEvents, setHomeTeamEvents] = useState<SofascoreEvent[]>([]);
   const [awayTeamEvents, setAwayTeamEvents] = useState<SofascoreEvent[]>([]);
+  const [homeTeamPage, setHomeTeamPage] = useState(0);
+  const [awayTeamPage, setAwayTeamPage] = useState(0);
   const [standings, setStandings] = useState<StandingsResponse | null>(null);
   const [matchHistory, setMatchHistory] = useState<MatchHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'matches' | 'standings' | 'history'>('matches');
 
+  const MATCHES_PER_PAGE = 5;
+
   useEffect(() => {
     setStandings(null); // Reset standings when event changes
     setMatchHistory(null); // Reset match history when event changes
+    setHomeTeamPage(0); // Reset pagination when event changes
+    setAwayTeamPage(0); // Reset pagination when event changes
     loadTeamEvents();
     setActiveTab('matches');
   }, [event]);
@@ -32,8 +38,8 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
         footballApi.getTeamEvents(event.awayTeam.id),
         footballApi.getMatchHistory(event.id),
       ]);
-      setHomeTeamEvents(home.slice(0, 5));
-      setAwayTeamEvents(away.slice(0, 5));
+      setHomeTeamEvents(home);
+      setAwayTeamEvents(away);
       setMatchHistory(history);
 
       // Try to fetch league standings if it's a league tournament
@@ -115,8 +121,13 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
     return won ? 'win' : 'loss';
   };
 
-  const homePoints = calculatePoints(homeTeamEvents, event.homeTeam.id);
-  const awayPoints = calculatePoints(awayTeamEvents, event.awayTeam.id);
+  const homeTeamPaginated = homeTeamEvents.slice(homeTeamPage * MATCHES_PER_PAGE, (homeTeamPage + 1) * MATCHES_PER_PAGE);
+  const awayTeamPaginated = awayTeamEvents.slice(awayTeamPage * MATCHES_PER_PAGE, (awayTeamPage + 1) * MATCHES_PER_PAGE);
+  const homeTotalPages = Math.ceil(homeTeamEvents.length / MATCHES_PER_PAGE);
+  const awayTotalPages = Math.ceil(awayTeamEvents.length / MATCHES_PER_PAGE);
+
+  const homePoints = calculatePoints(homeTeamEvents.slice(0, 5), event.homeTeam.id);
+  const awayPoints = calculatePoints(awayTeamEvents.slice(0, 5), event.awayTeam.id);
 
   return (
     <div className="dialog-overlay" onClick={onClose}>
@@ -204,7 +215,7 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
                       </tr>
                     </thead>
                     <tbody>
-                      {homeTeamEvents.map((match) => (
+                      {homeTeamPaginated.map((match) => (
                         <tr
                           key={match.id}
                           className={`result-${getMatchResult(match, event.homeTeam.id)}`}
@@ -220,6 +231,23 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
                       ))}
                     </tbody>
                   </table>
+                  {homeTotalPages > 1 && (
+                    <div className="pagination">
+                      <button
+                        onClick={() => setHomeTeamPage(prev => Math.max(0, prev - 1))}
+                        disabled={homeTeamPage === 0}
+                      >
+                        Previous
+                      </button>
+                      <span>Page {homeTeamPage + 1} of {homeTotalPages}</span>
+                      <button
+                        onClick={() => setHomeTeamPage(prev => Math.min(homeTotalPages - 1, prev + 1))}
+                        disabled={homeTeamPage >= homeTotalPages - 1}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="team-section">
@@ -237,7 +265,7 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
                       </tr>
                     </thead>
                     <tbody>
-                      {awayTeamEvents.map((match) => (
+                      {awayTeamPaginated.map((match) => (
                         <tr
                           key={match.id}
                           className={`result-${getMatchResult(match, event.awayTeam.id)}`}
@@ -253,6 +281,23 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
                       ))}
                     </tbody>
                   </table>
+                  {awayTotalPages > 1 && (
+                    <div className="pagination">
+                      <button
+                        onClick={() => setAwayTeamPage(prev => Math.max(0, prev - 1))}
+                        disabled={awayTeamPage === 0}
+                      >
+                        Previous
+                      </button>
+                      <span>Page {awayTeamPage + 1} of {awayTotalPages}</span>
+                      <button
+                        onClick={() => setAwayTeamPage(prev => Math.min(awayTotalPages - 1, prev + 1))}
+                        disabled={awayTeamPage >= awayTotalPages - 1}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : activeTab === 'standings' ? (
@@ -341,7 +386,7 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
                         </tr>
                       </thead>
                       <tbody>
-                        {matchHistory.oddsHistory.map((point, idx) => (
+                        {matchHistory.oddsHistory.slice().reverse().map((point, idx) => (
                           <tr key={idx}>
                             <td>{formatHistoryTimestamp(point.timestamp)}</td>
                             <td>{formatOdds(point.home)}</td>
@@ -367,7 +412,7 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
                         </tr>
                       </thead>
                       <tbody>
-                        {matchHistory.votesHistory.map((point, idx) => (
+                        {matchHistory.votesHistory.slice().reverse().map((point, idx) => (
                           <tr key={idx}>
                             <td>{formatHistoryTimestamp(point.timestamp)}</td>
                             <td>{point.home ?? '-'}</td>

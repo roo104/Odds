@@ -6,9 +6,7 @@ data class ScheduledEventsResponse(
 
 data class ScheduledEvent(
     val id: Long,
-    val slug: String? = null,
     val startTimestamp: Long,
-    val customId: String? = null,
     val status: Status,
     val winnerCode: Int? = null,
     val homeTeam: ScheduledTeam,
@@ -19,16 +17,6 @@ data class ScheduledEvent(
     val season: Season? = null,
     val roundInfo: RoundInfo? = null,
     val time: TimeInfo? = null,
-    val changes: Changes? = null,
-    val hasGlobalHighlights: Boolean? = null,
-    val hasXg: Boolean? = null,
-    val hasEventPlayerStatistics: Boolean? = null,
-    val hasEventPlayerHeatMap: Boolean? = null,
-    val detailId: Int? = null,
-    val crowdsourcingDataDisplayEnabled: Boolean? = null,
-    val finalResultOnly: Boolean? = null,
-    val feedLocked: Boolean? = null,
-    val isEditor: Boolean? = null,
     val eventFilters: EventFilter? = null
 )
 
@@ -126,9 +114,8 @@ data class EventDetailsResponse(
 )
 
 data class TeamEventsResponse(
-    val previousEvent: SofascoreEvent? = null,
-    val nextEvent: SofascoreEvent? = null,
-    val events: List<SofascoreEvent>? = null
+    val events: List<SofascoreEvent>? = null,
+    val hasNextPage: Boolean = false
 )
 
 data class StandingsResponse(

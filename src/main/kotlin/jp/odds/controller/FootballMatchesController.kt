@@ -24,7 +24,8 @@ class FootballMatchesController(private val sofascoreService: SofascoreService) 
     suspend fun getMatchesByDate(
         @PathVariable date: String,
         @RequestParam(defaultValue = "false") includeAllLeagues: Boolean
-    ): List<SofascoreEvent> = sofascoreService.getFootballMatchesByDate(LocalDate.parse(date), includeAllLeagues = includeAllLeagues)
+    ): List<SofascoreEvent> =
+        sofascoreService.getFootballMatchesByDate(LocalDate.parse(date), includeAllLeagues = includeAllLeagues)
 
     @PostMapping("/matches/date/{date}/refresh")
     suspend fun refreshMatchesByDate(
@@ -32,7 +33,11 @@ class FootballMatchesController(private val sofascoreService: SofascoreService) 
         @RequestParam(defaultValue = "false") includeAllLeagues: Boolean
     ): List<SofascoreEvent> {
         val localDate = LocalDate.parse(date)
-        return sofascoreService.getFootballMatchesByDate(localDate, forceRefresh = true, includeAllLeagues = includeAllLeagues)
+        return sofascoreService.getFootballMatchesByDate(
+            localDate,
+            forceRefresh = true,
+            includeAllLeagues = includeAllLeagues
+        )
     }
 
     @GetMapping("/team/{teamId}/events")
@@ -62,14 +67,8 @@ class FootballMatchesController(private val sofascoreService: SofascoreService) 
     suspend fun getTournamentStandings(
         @PathVariable tournamentId: Long,
         @PathVariable seasonId: Long
-    ): ResponseEntity<StandingsResponse> {
-        val result = sofascoreService.getTournamentStandings(tournamentId, seasonId)
-        return if (result != null) {
-            ResponseEntity.ok(result)
-        } else {
-            ResponseEntity.notFound().build()
-        }
-    }
+    ): ResponseEntity<StandingsResponse> = sofascoreService.getTournamentStandings(tournamentId, seasonId)?.let { ResponseEntity.ok(it) }
+        ?: ResponseEntity.notFound().build()
 
     @GetMapping("/matches/{eventId}/history")
     suspend fun getMatchHistory(@PathVariable eventId: Long): MatchHistoryResponse {

@@ -314,7 +314,7 @@ class SofascoreService(
                 .awaitBody<TeamEventsResponse>()
 
             logger.info("Fetched ${response.events?.size ?: 0} events for team $teamId")
-            response.events ?: emptyList()
+            response.events?.sortedByDescending { it.startTimestamp } ?: emptyList()
         } catch (e: Exception) {
             logger.warn("Could not fetch events for team $teamId: ${e.message}")
             emptyList()
