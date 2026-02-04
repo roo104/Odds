@@ -120,9 +120,19 @@ function FootballMatchesView() {
   };
 
   const availableCountries = useMemo(() => {
-    const matchesToConsider = filterTopLeaguesOnly
-      ? allMatches.filter(m => m.isTopLeague !== false)
-      : allMatches;
+    let matchesToConsider = allMatches;
+
+    if (filterNotStarted) {
+      matchesToConsider = matchesToConsider.filter(m => m.status.description === 'Not started');
+    }
+
+    if (filterMatchCriteria) {
+      matchesToConsider = matchesToConsider.filter(shouldHighlight);
+    }
+
+    if (filterTopLeaguesOnly) {
+      matchesToConsider = matchesToConsider.filter(m => m.isTopLeague !== false);
+    }
 
     return Array.from(
       new Set(
@@ -131,7 +141,7 @@ function FootballMatchesView() {
           .filter((name): name is string => !!name)
       )
     ).sort();
-  }, [allMatches, filterTopLeaguesOnly]);
+  }, [allMatches, filterNotStarted, filterMatchCriteria, filterTopLeaguesOnly, minOdds, minVotePercent]);
 
   // Clear selected countries when filter changes and they're no longer available
   useEffect(() => {
