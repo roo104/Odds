@@ -1,18 +1,9 @@
-package jp.odds.dto
+package jp.odds.service.response.model
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class SofascoreEventsResponse(
-    val events: List<SofascoreEvent>
-)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class ScheduledEventsResponse(
     val events: List<ScheduledEvent>
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class ScheduledEvent(
     val id: Long,
     val slug: String? = null,
@@ -41,7 +32,6 @@ data class ScheduledEvent(
     val eventFilters: EventFilter? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class SofascoreEvent(
     val id: Long,
     val startTimestamp: Long,
@@ -62,81 +52,68 @@ data class SofascoreEvent(
     var isTopLeague: Boolean? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class Team(
     val id: Long,
     val name: String,
     val country: Country? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class Country(
     val name: String?
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class Score(
     val current: Int? = null,
     val display: Int? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class Status(
     val type: String,
     val description: String
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class Tournament(
     val id: Long,
     val name: String,
     val category: Category
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class Category(
     val name: String,
     val country: Country? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class OddsResponse(
     val markets: List<Market>? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class Market(
     val marketName: String,
     val choices: List<Choice>? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class Choice(
     val name: String,
     val fractionalValue: String? = null,
     val sourceId: Int? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class Odds(
     val home: String? = null,
     val draw: String? = null,
     val away: String? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class VotingResponse(
     val vote: VoteData? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class VoteData(
     val vote1: Int? = null,
     val vote2: Int? = null,
     val voteX: Int? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class Voting(
     val home: Int? = null,
     val draw: Int? = null,
@@ -144,30 +121,25 @@ data class Voting(
     val total: Int? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class EventDetailsResponse(
     val event: SofascoreEvent? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class TeamEventsResponse(
     val previousEvent: SofascoreEvent? = null,
     val nextEvent: SofascoreEvent? = null,
     val events: List<SofascoreEvent>? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class StandingsResponse(
     val standings: List<StandingGroup>? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class StandingGroup(
     val rows: List<StandingRow>? = null,
     val name: String? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class StandingRow(
     val team: Team,
     val position: Int? = null,
@@ -180,26 +152,18 @@ data class StandingRow(
     val points: Int? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class TournamentSeasonsResponse(
-    val seasons: List<Season>? = null
-)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class Season(
     val id: Long,
     val name: String,
     val year: String? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class EventFilter(
     val category: List<String>? = null,
     val level: List<String>? = null,
     val gender: List<String>? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class ScheduledTeam(
     val id: Long,
     val name: String,
@@ -218,14 +182,12 @@ data class ScheduledTeam(
     val fieldTranslations: FieldTranslations? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class Sport(
     val id: Int,
     val name: String,
     val slug: String? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class CountryInfo(
     val alpha2: String? = null,
     val alpha3: String? = null,
@@ -233,20 +195,17 @@ data class CountryInfo(
     val slug: String? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class TeamColors(
     val primary: String? = null,
     val secondary: String? = null,
     val text: String? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class FieldTranslations(
     val nameTranslation: Map<String, String>? = null,
     val shortNameTranslation: Map<String, String>? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class DetailedScore(
     val current: Int? = null,
     val display: Int? = null,
@@ -255,7 +214,6 @@ data class DetailedScore(
     val normaltime: Int? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class ScheduledTournament(
     val id: Long,
     val name: String,
@@ -266,7 +224,6 @@ data class ScheduledTournament(
     val fieldTranslations: FieldTranslations? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class ScheduledCategory(
     val id: Int,
     val name: String,
@@ -278,7 +235,6 @@ data class ScheduledCategory(
     val fieldTranslations: FieldTranslations? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class UniqueTournament(
     val id: Int,
     val name: String,
@@ -292,21 +248,18 @@ data class UniqueTournament(
     val fieldTranslations: FieldTranslations? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class RoundInfo(
     val round: Int? = null,
     val name: String? = null,
     val slug: String? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class TimeInfo(
     val injuryTime1: Int? = null,
     val injuryTime2: Int? = null,
     val currentPeriodStartTimestamp: Long? = null
 )
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 data class Changes(
     val changes: List<String>? = null,
     val changeTimestamp: Long? = null

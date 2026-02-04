@@ -1,7 +1,11 @@
 package jp.odds.controller
 
-import jp.odds.dto.*
+import jp.odds.dto.MatchHistoryResponse
+import jp.odds.dto.OddsHistoryPoint
+import jp.odds.dto.VotesHistoryPoint
 import jp.odds.service.SofascoreService
+import jp.odds.service.response.model.SofascoreEvent
+import jp.odds.service.response.model.StandingsResponse
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*

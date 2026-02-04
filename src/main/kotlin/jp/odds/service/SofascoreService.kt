@@ -1,10 +1,10 @@
 package jp.odds.service
 
-import jp.odds.dto.*
 import jp.odds.entity.DailyMatchData
 import jp.odds.repository.DailyMatchDataRepository
 import jp.odds.repository.MatchOddsHistoryRepository
 import jp.odds.repository.MatchVotesHistoryRepository
+import jp.odds.service.response.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
