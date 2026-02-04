@@ -1,5 +1,6 @@
 import {SofascoreEvent} from '../types';
 import './MatchesTable.css';
+import * as React from "react";
 
 interface MatchesTableProps {
   matches: SofascoreEvent[];
@@ -49,7 +50,7 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
     onRefreshMatch(eventId);
   };
 
-  const handleRowClick = (e: React.MouseEvent, match: SofascoreEvent) => {
+  const handleRowClick = (_e: React.MouseEvent, match: SofascoreEvent) => {
     // Don't trigger click if user is selecting text
     const selection = window.getSelection();
     if (selection && selection.toString().length > 0) {
