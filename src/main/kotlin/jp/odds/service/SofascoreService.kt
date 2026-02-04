@@ -53,11 +53,7 @@ class SofascoreService(
         return getFootballMatchesByDate(tomorrow)
     }
 
-    suspend fun getFootballMatchesByDate(
-        date: LocalDate,
-        forceRefresh: Boolean = false,
-        includeAllLeagues: Boolean = false
-    ): List<SofascoreEvent> {
+    suspend fun getFootballMatchesByDate(date: LocalDate, forceRefresh: Boolean = false, includeAllLeagues: Boolean = false): List<SofascoreEvent> {
         val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         // Check if data for this date already exists in database

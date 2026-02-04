@@ -1,0 +1,7 @@
+root = true
+
+[*.kt]
+max_line_length = 200
+
+[*.kts]
+max_line_length = 200
