@@ -367,6 +367,10 @@ function FootballMatchesView() {
         </div>
       )}
 
+      <div className="matches-count">
+        Showing {getFilteredMatches().length} matches
+      </div>
+
       {loading ? (
         <div className="loading">Loading matches...</div>
       ) : (
