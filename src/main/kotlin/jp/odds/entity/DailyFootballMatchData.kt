@@ -8,7 +8,7 @@ import java.time.LocalDate
 @Table(name = "daily_football_match_data", uniqueConstraints = [
     UniqueConstraint(columnNames = ["event_id"])
 ])
-data class DailyMatchData(
+data class DailyFootballMatchData(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,

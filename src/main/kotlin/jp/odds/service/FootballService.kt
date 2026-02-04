@@ -1,7 +1,7 @@
 package jp.odds.service
 
-import jp.odds.entity.DailyMatchData
-import jp.odds.repository.DailyMatchDataRepository
+import jp.odds.entity.DailyFootballMatchData
+import jp.odds.repository.DailyFootballMatchDataRepository
 import jp.odds.repository.MatchOddsHistoryRepository
 import jp.odds.repository.MatchVotesHistoryRepository
 import jp.odds.service.response.model.ScheduledEventsResponse
@@ -18,7 +18,7 @@ import java.time.format.DateTimeFormatter
 @Service
 class FootballService(
     webClientBuilder: WebClient.Builder,
-    private val dailyMatchDataRepository: DailyMatchDataRepository,
+    private val dailyFootballMatchDataRepository: DailyFootballMatchDataRepository,
     matchOddsHistoryRepository: MatchOddsHistoryRepository,
     matchVotesHistoryRepository: MatchVotesHistoryRepository
 ) : BaseSofascoreService(webClientBuilder, matchOddsHistoryRepository, matchVotesHistoryRepository) {
@@ -86,7 +86,7 @@ class FootballService(
         logger.info("Refreshing single football match with eventId: $eventId")
 
         val existingData = withContext(Dispatchers.IO) {
-            dailyMatchDataRepository.findByEventId(eventId)
+            dailyFootballMatchDataRepository.findByEventId(eventId)
         } ?: throw IllegalArgumentException("Match $eventId not found in database")
 
         val eventDetails = fetchEventDetails(eventId)
@@ -128,7 +128,7 @@ class FootballService(
             lastUpdated = now
         )
         withContext(Dispatchers.IO) {
-            dailyMatchDataRepository.save(updatedData)
+            dailyFootballMatchDataRepository.save(updatedData)
         }
         logger.info("Updated match $eventId - tournamentId: ${updatedData.tournamentId}, tournamentName: ${updatedData.tournamentName}")
 
@@ -168,7 +168,7 @@ class FootballService(
         val endOfDay = matchDate.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond()
 
         val dailyData = withContext(Dispatchers.IO) {
-            dailyMatchDataRepository.findByStartTimestampBetween(startOfDay, endOfDay)
+            dailyFootballMatchDataRepository.findByStartTimestampBetween(startOfDay, endOfDay)
         }
         logger.info("Loaded ${dailyData.size} matches from database for date $matchDate (timestamp range: $startOfDay - $endOfDay)")
 
@@ -207,7 +207,7 @@ class FootballService(
 
         val existingRecords = if (events.isNotEmpty()) {
             withContext(Dispatchers.IO) {
-                dailyMatchDataRepository.findByEventIdIn(events.map { it.id })
+                dailyFootballMatchDataRepository.findByEventIdIn(events.map { it.id })
                     .associateBy { it.eventId }
             }
         } else {
@@ -222,7 +222,7 @@ class FootballService(
                 )
                 return@mapNotNull null
             }
-            DailyMatchData(
+            DailyFootballMatchData(
                 id = existing?.id,
                 matchDate = existing?.matchDate ?: matchDate,
                 eventId = event.id,
@@ -253,7 +253,7 @@ class FootballService(
         }
 
         withContext(Dispatchers.IO) {
-            dailyMatchDataRepository.saveAll(entities)
+            dailyFootballMatchDataRepository.saveAll(entities)
         }
         logger.info("Saved ${entities.size} matches to database for date $matchDate")
     }
