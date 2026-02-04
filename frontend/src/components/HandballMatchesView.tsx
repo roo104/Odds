@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react';
-import {footballApi} from '../services/api';
+import {handballApi} from '../services/api';
 import {SofascoreEvent} from '../types';
 import MatchesTable from './MatchesTable';
 import DateNavigation from './DateNavigation';
@@ -14,7 +14,7 @@ interface ToastMessage {
   type: 'success' | 'error' | 'info';
 }
 
-function FootballMatchesView() {
+function HandballMatchesView() {
   const [allMatches, setAllMatches] = useState<SofascoreEvent[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
@@ -26,12 +26,10 @@ function FootballMatchesView() {
   const [selectedEvent, setSelectedEvent] = useState<SofascoreEvent | null>(null);
   const [refreshingMatchId, setRefreshingMatchId] = useState<number | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const [includeAllLeagues, setIncludeAllLeagues] = useState(false);
-  const [filterTopLeaguesOnly, setFilterTopLeaguesOnly] = useState(false);
 
   useEffect(() => {
-    loadMatches(currentDate, false, includeAllLeagues);
-  }, [currentDate, includeAllLeagues]);
+    loadMatches(currentDate, false);
+  }, [currentDate]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info') => {
     const id = Date.now();
@@ -42,13 +40,13 @@ function FootballMatchesView() {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  const loadMatches = async (date: Date, forceRefresh: boolean = false, includeAll: boolean = includeAllLeagues) => {
+  const loadMatches = async (date: Date, forceRefresh: boolean = false) => {
     setLoading(true);
     try {
       const dateStr = date.toISOString().split('T')[0];
       const matches = forceRefresh
-        ? await footballApi.refreshMatchesByDate(dateStr, includeAll)
-        : await footballApi.getMatchesByDate(dateStr, includeAll);
+        ? await handballApi.refreshMatchesByDate(dateStr, true)
+        : await handballApi.getMatchesByDate(dateStr, true);
       setAllMatches(matches);
       setSelectedCountries(new Set());
     } catch (error) {
@@ -59,11 +57,7 @@ function FootballMatchesView() {
   };
 
   const handleRefresh = () => {
-    loadMatches(currentDate, true, includeAllLeagues);
-  };
-
-  const handleToggleAllLeagues = () => {
-    setIncludeAllLeagues(!includeAllLeagues);
+    loadMatches(currentDate, true);
   };
 
   const parseOdds = (fractionalOdds?: string): number => {
@@ -74,7 +68,7 @@ function FootballMatchesView() {
         const numerator = parseFloat(parts[0]);
         const denominator = parseFloat(parts[1]);
         const result = (numerator / denominator) + 1.0;
-        return Math.round(result * 100) / 100; // Round to 2 decimal places
+        return Math.round(result * 100) / 100;
       }
     } catch (e) {
       return 0;
@@ -106,12 +100,8 @@ function FootballMatchesView() {
       filtered = filtered.filter(shouldHighlight);
     }
 
-    if (filterTopLeaguesOnly) {
-      filtered = filtered.filter(m => m.isTopLeague !== false);
-    }
-
     if (selectedCountries.size > 0) {
-      filtered = filtered.filter(m => 
+      filtered = filtered.filter(m =>
         selectedCountries.has(m.tournament.category.country?.name || '')
       );
     }
@@ -130,10 +120,6 @@ function FootballMatchesView() {
       matchesToConsider = matchesToConsider.filter(shouldHighlight);
     }
 
-    if (filterTopLeaguesOnly) {
-      matchesToConsider = matchesToConsider.filter(m => m.isTopLeague !== false);
-    }
-
     return Array.from(
       new Set(
         matchesToConsider
@@ -141,9 +127,8 @@ function FootballMatchesView() {
           .filter((name): name is string => !!name)
       )
     ).sort();
-  }, [allMatches, filterNotStarted, filterMatchCriteria, filterTopLeaguesOnly, minOdds, minVotePercent]);
+  }, [allMatches, filterNotStarted, filterMatchCriteria, minOdds, minVotePercent]);
 
-  // Clear selected countries when filter changes and they're no longer available
   useEffect(() => {
     if (selectedCountries.size > 0) {
       const availableSet = new Set(availableCountries);
@@ -195,7 +180,7 @@ function FootballMatchesView() {
 
   const getCountryFlag = (countryName: string): string => {
     const countryFlags: Record<string, string> = {
-      'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+      'England': '🏴',
       'Spain': '🇪🇸',
       'Germany': '🇩🇪',
       'Italy': '🇮🇹',
@@ -204,7 +189,7 @@ function FootballMatchesView() {
       'Netherlands': '🇳🇱',
       'Belgium': '🇧🇪',
       'Turkey': '🇹🇷',
-      'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+      'Scotland': '🏴',
       'Austria': '🇦🇹',
       'Switzerland': '🇨🇭',
       'Denmark': '🇩🇰',
@@ -253,7 +238,7 @@ function FootballMatchesView() {
       'Republic of Ireland': '🇮🇪',
       'Ireland': '🇮🇪',
       'Northern Ireland': '🇬🇧',
-      'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
+      'Wales': '🏴',
       'Finland': '🇫🇮',
       'Iceland': '🇮🇸',
       'Luxembourg': '🇱🇺',
@@ -301,16 +286,14 @@ function FootballMatchesView() {
     setRefreshingMatchId(eventId);
     try {
       const dateStr = currentDate.toISOString().split('T')[0];
-      const updatedMatch = await footballApi.refreshSingleMatch(eventId, dateStr);
+      const updatedMatch = await handballApi.refreshSingleMatch(eventId, dateStr);
 
-      // Update the match in the allMatches array
       setAllMatches((prevMatches) =>
         prevMatches.map((match) =>
           match.id === eventId ? updatedMatch : match
         )
       );
 
-      // If this match is currently selected in the dialog, update it too
       if (selectedEvent && selectedEvent.id === eventId) {
         setSelectedEvent(updatedMatch);
       }
@@ -326,7 +309,7 @@ function FootballMatchesView() {
   };
 
   return (
-    <div className="football-matches-view">
+    <div className="handball-matches-view">
       <DateNavigation
         currentDate={currentDate}
         onDateChange={setCurrentDate}
@@ -335,8 +318,6 @@ function FootballMatchesView() {
         onToday={handleToday}
         onRefresh={handleRefresh}
         isRefreshing={loading}
-        includeAllLeagues={includeAllLeagues}
-        onToggleAllLeagues={handleToggleAllLeagues}
       />
 
       <FilterControls
@@ -348,8 +329,6 @@ function FootballMatchesView() {
         setMinOdds={setMinOdds}
         minVotePercent={minVotePercent}
         setMinVotePercent={setMinVotePercent}
-        filterTopLeaguesOnly={filterTopLeaguesOnly}
-        setFilterTopLeaguesOnly={setFilterTopLeaguesOnly}
       />
 
       {availableCountries.length > 0 && (
@@ -396,7 +375,7 @@ function FootballMatchesView() {
       {selectedEvent && (
         <TeamDialog
           event={selectedEvent}
-          api={footballApi}
+          api={handballApi}
           onClose={() => setSelectedEvent(null)}
         />
       )}
@@ -413,4 +392,4 @@ function FootballMatchesView() {
   );
 }
 
-export default FootballMatchesView;
+export default HandballMatchesView;

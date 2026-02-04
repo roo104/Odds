@@ -1,15 +1,16 @@
 import {useEffect, useState} from 'react';
 import {MatchHistoryResponse, SofascoreEvent, StandingsResponse} from '../types';
-import {footballApi} from '../services/api';
+import MatchesApi from '../services/api';
 import {CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 import './TeamDialog.css';
 
 interface TeamDialogProps {
   event: SofascoreEvent;
   onClose: () => void;
+  api: MatchesApi;
 }
 
-function TeamDialog({ event, onClose }: TeamDialogProps) {
+function TeamDialog({ event, onClose, api }: TeamDialogProps) {
   const [homeTeamEvents, setHomeTeamEvents] = useState<SofascoreEvent[]>([]);
   const [awayTeamEvents, setAwayTeamEvents] = useState<SofascoreEvent[]>([]);
   const [homeTeamPage, setHomeTeamPage] = useState(0);
@@ -34,9 +35,9 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
     setLoading(true);
     try {
       const [home, away, history] = await Promise.all([
-        footballApi.getTeamEvents(event.homeTeam.id),
-        footballApi.getTeamEvents(event.awayTeam.id),
-        footballApi.getMatchHistory(event.id),
+        api.getTeamEvents(event.homeTeam.id),
+        api.getTeamEvents(event.awayTeam.id),
+        api.getMatchHistory(event.id),
       ]);
       setHomeTeamEvents(home);
       setAwayTeamEvents(away);
@@ -47,7 +48,7 @@ function TeamDialog({ event, onClose }: TeamDialogProps) {
       console.log('Tournament ID:', event.tournament.id, 'Tournament name:', event.tournament.name, 'Category:', event.tournament.category.name);
       if (event.tournament.id > 0 && event.season?.id) {
         console.log('Fetching standings for tournament:', event.tournament.id, 'season:', event.season.id);
-        const standingsData = await footballApi.getTournamentStandings(event.tournament.id, event.season.id);
+        const standingsData = await api.getTournamentStandings(event.tournament.id, event.season.id);
         console.log('Standings data for', event.tournament.name, ':', standingsData);
         setStandings(standingsData);
       } else {

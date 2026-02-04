@@ -1,6 +1,8 @@
 package jp.odds.service
 
+import jp.odds.entity.DailyHandballMatchData
 import jp.odds.entity.DailyMatchData
+import jp.odds.repository.DailyHandballMatchDataRepository
 import jp.odds.repository.DailyMatchDataRepository
 import jp.odds.repository.MatchOddsHistoryRepository
 import jp.odds.repository.MatchVotesHistoryRepository
@@ -20,6 +22,7 @@ import java.time.format.DateTimeFormatter
 class SofascoreService(
     webClientBuilder: WebClient.Builder,
     private val dailyMatchDataRepository: DailyMatchDataRepository,
+    private val dailyHandballMatchDataRepository: DailyHandballMatchDataRepository,
     private val matchOddsHistoryRepository: MatchOddsHistoryRepository,
     private val matchVotesHistoryRepository: MatchVotesHistoryRepository
 ) {
@@ -51,6 +54,11 @@ class SofascoreService(
     suspend fun getTodayFootballMatches(): List<SofascoreEvent> {
         val tomorrow = LocalDate.now().plusDays(1)
         return getFootballMatchesByDate(tomorrow)
+    }
+
+    suspend fun getTodayHandballMatches(): List<SofascoreEvent> {
+        val tomorrow = LocalDate.now().plusDays(1)
+        return getHandballMatchesByDate(tomorrow)
     }
 
     suspend fun getFootballMatchesByDate(date: LocalDate, forceRefresh: Boolean = false, includeAllLeagues: Boolean = false): List<SofascoreEvent> {
@@ -109,6 +117,50 @@ class SofascoreService(
             filteredEvents
         } catch (e: Exception) {
             logger.error("Error fetching football matches: ${e.message}", e)
+            emptyList()
+        }
+    }
+
+    suspend fun getHandballMatchesByDate(date: LocalDate, forceRefresh: Boolean = false): List<SofascoreEvent> {
+        val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
+
+        if (!forceRefresh) {
+            logger.info("Loading handball matches for $dateStr from database")
+            return loadHandballMatchesFromDatabase(date)
+        }
+
+        val uri = "/sport/handball/scheduled-events/$dateStr"
+        logger.info("Fetching handball matches for date: $dateStr from URI: $uri (forceRefresh=${true})")
+
+        return try {
+            val response = webClient
+                .get()
+                .uri(uri)
+                .retrieve()
+                .awaitBody<ScheduledEventsResponse>()
+
+            logger.info("Successfully fetched ${response.events.size} matches")
+
+            val events = response.events.map { scheduledEvent ->
+                convertScheduledEventToSofascoreEvent(scheduledEvent)
+            }
+
+            val now = Instant.now()
+            events.forEach { event ->
+                kotlinx.coroutines.delay(500L)
+                event.odds = fetchOddsForEvent(event.id)
+                event.voting = fetchVotingForEvent(event.id)
+                event.lastUpdated = now.epochSecond
+
+                saveOddsHistory(event.id, event.odds, now)
+                saveVotesHistory(event.id, event.voting, now)
+            }
+
+            saveHandballMatchesToDatabase(date, events)
+
+            events
+        } catch (e: Exception) {
+            logger.error("Error fetching handball matches: ${e.message}", e)
             emptyList()
         }
     }
@@ -176,6 +228,67 @@ class SofascoreService(
         return events
     }
 
+    private suspend fun loadHandballMatchesFromDatabase(matchDate: LocalDate): List<SofascoreEvent> {
+        val startOfDay = matchDate.atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond()
+        val endOfDay = matchDate.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond()
+
+        val dailyData = withContext(Dispatchers.IO) {
+            dailyHandballMatchDataRepository.findByStartTimestampBetween(startOfDay, endOfDay)
+        }
+        logger.info("Loaded ${dailyData.size} handball matches from database for date $matchDate (timestamp range: $startOfDay - $endOfDay)")
+
+        val events = dailyData.map { data ->
+            SofascoreEvent(
+                id = data.eventId,
+                startTimestamp = data.startTimestamp,
+                homeTeam = Team(
+                    id = data.homeTeamId,
+                    name = data.homeTeamName,
+                    country = null
+                ),
+                awayTeam = Team(
+                    id = data.awayTeamId,
+                    name = data.awayTeamName,
+                    country = null
+                ),
+                homeScore = data.homeScore?.let { Score(current = it) },
+                awayScore = data.awayScore?.let { Score(current = it) },
+                status = Status(
+                    type = data.statusType,
+                    description = data.statusDescription
+                ),
+                tournament = Tournament(
+                    id = data.tournamentId,
+                    name = data.tournamentName,
+                    category = Category(
+                        name = data.categoryName,
+                        country = data.countryName?.let { Country(it) }
+                    )
+                ),
+                season = data.seasonId?.let { Season(id = it, name = "") },
+                vote = null,
+                odds = if (data.oddsHome != null || data.oddsDraw != null || data.oddsAway != null) {
+                    Odds(
+                        home = data.oddsHome,
+                        draw = data.oddsDraw,
+                        away = data.oddsAway
+                    )
+                } else null,
+                voting = if (data.votingHome != null || data.votingDraw != null || data.votingAway != null) {
+                    Voting(
+                        home = data.votingHome,
+                        draw = data.votingDraw,
+                        away = data.votingAway,
+                        total = data.votingTotal
+                    )
+                } else null,
+                lastUpdated = data.lastUpdated?.epochSecond ?: 0
+            )
+        }
+
+        return events
+    }
+
     private fun isTopLeague(event: SofascoreEvent): Boolean =
         event.eventFilters?.level?.contains("top-competitions") ?: false
 
@@ -236,6 +349,61 @@ class SofascoreService(
         logger.info("Saved ${entities.size} matches to database for date $matchDate")
     }
 
+    private suspend fun saveHandballMatchesToDatabase(matchDate: LocalDate, events: List<SofascoreEvent>) {
+        val now = Instant.now()
+
+        val existingRecords = if (events.isNotEmpty()) {
+            withContext(Dispatchers.IO) {
+                dailyHandballMatchDataRepository.findByEventIdIn(events.map { it.id })
+                    .associateBy { it.eventId }
+            }
+        } else {
+            emptyMap()
+        }
+
+        val entities = events.mapNotNull { event ->
+            val existing = existingRecords[event.id]
+            if (existing?.matchDate?.isBefore(matchDate) == true) {
+                logger.info(
+                    "Skipping update for handball event ${event.id} on $matchDate; earlier match_date exists: ${existing.matchDate}"
+                )
+                return@mapNotNull null
+            }
+            DailyHandballMatchData(
+                id = existing?.id,
+                matchDate = existing?.matchDate ?: matchDate,
+                eventId = event.id,
+                startTimestamp = event.startTimestamp,
+                homeTeamId = event.homeTeam.id,
+                homeTeamName = event.homeTeam.name,
+                awayTeamId = event.awayTeam.id,
+                awayTeamName = event.awayTeam.name,
+                tournamentId = event.tournament.id,
+                tournamentName = event.tournament.name,
+                seasonId = event.season?.id,
+                categoryName = event.tournament.category.name,
+                countryName = event.tournament.category.country?.name,
+                homeScore = event.homeScore?.current,
+                awayScore = event.awayScore?.current,
+                oddsHome = event.odds?.home,
+                oddsDraw = event.odds?.draw,
+                oddsAway = event.odds?.away,
+                votingHome = event.voting?.home,
+                votingDraw = event.voting?.draw,
+                votingAway = event.voting?.away,
+                votingTotal = event.voting?.total,
+                statusType = event.status.type,
+                statusDescription = event.status.description,
+                lastUpdated = now
+            )
+        }
+
+        withContext(Dispatchers.IO) {
+            dailyHandballMatchDataRepository.saveAll(entities)
+        }
+        logger.info("Saved ${entities.size} handball matches to database for date $matchDate")
+    }
+
     private fun filterEventsByTopLeagues(events: List<SofascoreEvent>): List<SofascoreEvent> {
         return events.filter { event -> isTopLeague(event) }
     }
@@ -288,12 +456,14 @@ class SofascoreService(
 
             response.vote?.let { vote ->
                 val total = (vote.vote1 ?: 0) + (vote.vote2 ?: 0) + (vote.voteX ?: 0)
-                Voting(
-                    home = ((vote.vote1 ?: 0) * 100 / total),
-                    draw = ((vote.voteX ?: 0) * 100 / total),
-                    away = ((vote.vote2 ?: 0) * 100 / total),
-                    total = total
-                ).takeIf { total > 0 }
+                if (total > 0) {
+                    Voting(
+                        home = ((vote.vote1 ?: 0) * 100 / total),
+                        draw = ((vote.voteX ?: 0) * 100 / total),
+                        away = ((vote.vote2 ?: 0) * 100 / total),
+                        total = total
+                    )
+                } else null
             }
         } catch (e: Exception) {
             logger.warn("Could not fetch voting for event $eventId: ${e.message}", e)
@@ -426,6 +596,92 @@ class SofascoreService(
             voting = voting,
             lastUpdated = now.epochSecond,
             isTopLeague = updatedData.isTopLeague
+        )
+    }
+
+    suspend fun refreshHandballSingleMatch(eventId: Long): SofascoreEvent {
+        logger.info("Refreshing single handball match with eventId: $eventId")
+
+        val existingData = withContext(Dispatchers.IO) {
+            dailyHandballMatchDataRepository.findByEventId(eventId)
+        } ?: throw IllegalArgumentException("Match $eventId not found in database")
+
+        kotlinx.coroutines.delay(500L)
+        val eventDetails = fetchEventDetails(eventId)
+        val odds = fetchOddsForEvent(eventId)
+        val voting = fetchVotingForEvent(eventId)
+        val now = Instant.now()
+
+        saveOddsHistory(eventId, odds, now)
+        saveVotesHistory(eventId, voting, now)
+
+        if (odds == null && voting == null && eventDetails == null) {
+            logger.warn("No data fetched for handball match $eventId")
+            throw RuntimeException("Could not fetch fresh data for match $eventId")
+        }
+
+        val refreshedTournamentId = eventDetails?.tournament?.id?.takeIf { it > 0 } ?: existingData.tournamentId
+        val refreshedTournamentName =
+            eventDetails?.tournament?.name?.takeIf { it.isNotBlank() } ?: existingData.tournamentName
+        val refreshedCategoryName =
+            eventDetails?.tournament?.category?.name?.takeIf { it.isNotBlank() } ?: existingData.categoryName
+        val refreshedSeasonId = eventDetails?.season?.id
+
+        val updatedData = existingData.copy(
+            tournamentId = refreshedTournamentId,
+            tournamentName = refreshedTournamentName,
+            seasonId = refreshedSeasonId ?: existingData.seasonId,
+            categoryName = refreshedCategoryName,
+            homeScore = eventDetails?.homeScore?.current,
+            awayScore = eventDetails?.awayScore?.current,
+            oddsHome = odds?.home,
+            oddsDraw = odds?.draw,
+            oddsAway = odds?.away,
+            votingHome = voting?.home,
+            votingDraw = voting?.draw,
+            votingAway = voting?.away,
+            votingTotal = voting?.total,
+            statusType = eventDetails?.status?.type ?: existingData.statusType,
+            statusDescription = eventDetails?.status?.description ?: existingData.statusDescription,
+            lastUpdated = now
+        )
+        withContext(Dispatchers.IO) {
+            dailyHandballMatchDataRepository.save(updatedData)
+        }
+        logger.info("Updated handball match $eventId - tournamentId: ${updatedData.tournamentId}, tournamentName: ${updatedData.tournamentName}")
+
+        return SofascoreEvent(
+            id = updatedData.eventId,
+            startTimestamp = updatedData.startTimestamp,
+            homeTeam = Team(
+                id = updatedData.homeTeamId,
+                name = updatedData.homeTeamName,
+                country = null
+            ),
+            awayTeam = Team(
+                id = updatedData.awayTeamId,
+                name = updatedData.awayTeamName,
+                country = null
+            ),
+            homeScore = eventDetails?.homeScore,
+            awayScore = eventDetails?.awayScore,
+            status = Status(
+                type = updatedData.statusType,
+                description = updatedData.statusDescription
+            ),
+            tournament = Tournament(
+                id = updatedData.tournamentId,
+                name = updatedData.tournamentName,
+                category = Category(
+                    name = updatedData.categoryName,
+                    country = null
+                )
+            ),
+            season = updatedData.seasonId?.let { Season(id = it, name = "") },
+            vote = null,
+            odds = odds,
+            voting = voting,
+            lastUpdated = now.epochSecond
         )
     }
 

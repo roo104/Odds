@@ -8,8 +8,8 @@ interface DateNavigationProps {
   onToday: () => void;
   onRefresh: () => void;
   isRefreshing: boolean;
-  includeAllLeagues: boolean;
-  onToggleAllLeagues: () => void;
+  includeAllLeagues?: boolean;
+  onToggleAllLeagues?: () => void;
 }
 
 function DateNavigation({
@@ -56,13 +56,15 @@ function DateNavigation({
       >
         {isRefreshing ? 'Refreshing...' : 'Refresh'}
       </button>
-      <button
-        onClick={onToggleAllLeagues}
-        className={`nav-button toggle-leagues-button ${includeAllLeagues ? 'active' : ''}`}
-        title={includeAllLeagues ? 'Showing all leagues' : 'Showing top leagues only'}
-      >
-        {includeAllLeagues ? 'All Leagues' : 'Top Leagues Only'}
-      </button>
+      {includeAllLeagues !== undefined && onToggleAllLeagues && (
+        <button
+          onClick={onToggleAllLeagues}
+          className={`nav-button toggle-leagues-button ${includeAllLeagues ? 'active' : ''}`}
+          title={includeAllLeagues ? 'Showing all leagues' : 'Showing top leagues only'}
+        >
+          {includeAllLeagues ? 'All Leagues' : 'Top Leagues Only'}
+        </button>
+      )}
     </div>
   );
 }

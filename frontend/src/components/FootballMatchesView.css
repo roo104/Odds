@@ -1,4 +1,5 @@
-.football-matches-view {
+.football-matches-view,
+.handball-matches-view {
   padding: 20px;
   max-width: 1600px;
   margin: 0 auto;
