@@ -202,6 +202,7 @@ function FootballMatchesView() {
       'Norway': '🇳🇴',
       'Poland': '🇵🇱',
       'Czech Republic': '🇨🇿',
+      'Czechia': '🇨🇿',
       'Greece': '🇬🇷',
       'Croatia': '🇭🇷',
       'Serbia': '🇷🇸',
@@ -213,6 +214,7 @@ function FootballMatchesView() {
       'Mexico': '🇲🇽',
       'Japan': '🇯🇵',
       'South Korea': '🇰🇷',
+      'Korea Republic': '🇰🇷',
       'Australia': '🇦🇺',
       'Saudi Arabia': '🇸🇦',
       'United Arab Emirates': '🇦🇪',
@@ -239,6 +241,7 @@ function FootballMatchesView() {
       'Slovakia': '🇸🇰',
       'Slovenia': '🇸🇮',
       'Republic of Ireland': '🇮🇪',
+      'Ireland': '🇮🇪',
       'Northern Ireland': '🇬🇧',
       'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
       'Finland': '🇫🇮',
@@ -278,6 +281,8 @@ function FootballMatchesView() {
       'Indonesia': '🇮🇩',
       'Philippines': '🇵🇭',
       'New Zealand': '🇳🇿',
+      'World': '🌍',
+      'Europe': '🇪🇺',
     };
     return countryFlags[countryName] || '🌍';
   };
