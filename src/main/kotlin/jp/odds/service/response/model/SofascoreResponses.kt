@@ -251,3 +251,24 @@ data class Changes(
     val changes: List<String>? = null,
     val changeTimestamp: Long? = null
 )
+
+data class SofascoreEventResponse(
+    val event: SofascoreEventDetails
+) {
+    data class SofascoreEventDetails(
+        val id: Long,
+        val status: SofascoreStatusDetails,
+        val homeScore: SofascoreScoreDetails?,
+        val awayScore: SofascoreScoreDetails?
+    )
+
+    data class SofascoreStatusDetails(
+        val code: Int?,
+        val description: String?,
+        val type: String?
+    )
+
+    data class SofascoreScoreDetails(
+        val current: Int?
+    )
+}

@@ -1,4 +1,12 @@
-import {MatchHistoryResponse, SofascoreEvent, StandingsResponse} from '../types';
+import {
+    BetSelection,
+    BetsPageResponse,
+    MatchBet,
+    MatchHistoryResponse,
+    SofascoreEvent,
+    SportType,
+    StandingsResponse
+} from '../types';
 
 interface MatchesApi {
   getTodayMatches: () => Promise<SofascoreEvent[]>;
@@ -14,6 +22,16 @@ export default MatchesApi
 
 const FOOTBALL_API_BASE_URL = 'http://localhost:8080/api/football';
 const HANDBALL_API_BASE_URL = 'http://localhost:8080/api/handball';
+const BETS_API_BASE_URL = 'http://localhost:8080/api/bets';
+
+interface CreateBetRequest {
+  eventId: number;
+  sport: SportType;
+  selection: BetSelection;
+  homeTeamName: string;
+  awayTeamName: string;
+  startTimestamp: number;
+}
 
 export const footballApi: MatchesApi = {
   getTodayMatches: async (): Promise<SofascoreEvent[]> => {
@@ -133,6 +151,32 @@ export const handballApi: MatchesApi = {
   getMatchHistory: async (eventId: number): Promise<MatchHistoryResponse> => {
     const response = await fetch(`${HANDBALL_API_BASE_URL}/matches/${eventId}/history`);
     if (!response.ok) throw new Error('Failed to fetch match history');
+    return response.json();
+  },
+};
+
+export const betsApi = {
+  createBet: async (payload: CreateBetRequest): Promise<MatchBet> => {
+    const response = await fetch(BETS_API_BASE_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to create bet');
+    return response.json();
+  },
+
+  getBets: async (page: number, size: number): Promise<BetsPageResponse> => {
+    const response = await fetch(`${BETS_API_BASE_URL}?page=${page}&size=${size}`);
+    if (!response.ok) throw new Error('Failed to fetch bets');
+    return response.json();
+  },
+
+  refreshBetScore: async (betId: number): Promise<MatchBet> => {
+    const response = await fetch(`${BETS_API_BASE_URL}/${betId}/refresh`, {
+      method: 'POST',
+    });
+    if (!response.ok) throw new Error('Failed to refresh bet score');
     return response.json();
   },
 };

@@ -92,3 +92,13 @@
   background-color: rgba(76, 175, 80, 0.3);
   font-weight: 600;
 }
+
+.tournament-flag {
+  margin-right: 6px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.tournament-name {
+  vertical-align: middle;
+}

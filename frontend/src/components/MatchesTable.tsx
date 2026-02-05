@@ -73,6 +73,13 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
     return 'away';
   };
 
+  const getTournamentFlag = (match: SofascoreEvent): string | null => {
+    if (match.tournament.category.name === 'Europe') {
+      return '🇪🇺';
+    }
+    return null;
+  };
+
   return (
     <div className="matches-table-container">
       <table className="matches-table">
@@ -129,7 +136,12 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
                   {match.voting?.away ? `${match.voting.away}%` : '-'}
                 </td>
                 <td>{match.status.description}</td>
-                <td>{match.tournament.name}</td>
+                <td>
+                  {getTournamentFlag(match) && (
+                    <span className="tournament-flag" aria-label="Europe">🇪🇺</span>
+                  )}
+                  <span className="tournament-name">{match.tournament.name}</span>
+                </td>
                 <td className="last-updated-cell" title={match.lastUpdated ? formatDateTime(match.lastUpdated) : ''}>
                   {formatLastUpdated(match.lastUpdated)}
                 </td>

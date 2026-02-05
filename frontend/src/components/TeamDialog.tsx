@@ -1,6 +1,6 @@
 import {useEffect, useState} from 'react';
-import {MatchHistoryResponse, SofascoreEvent, StandingsResponse} from '../types';
-import MatchesApi from '../services/api';
+import {BetSelection, MatchHistoryResponse, SofascoreEvent, SportType, StandingsResponse} from '../types';
+import MatchesApi, {betsApi} from '../services/api';
 import {CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 import './TeamDialog.css';
 
@@ -8,9 +8,10 @@ interface TeamDialogProps {
   event: SofascoreEvent;
   onClose: () => void;
   api: MatchesApi;
+  sport: SportType;
 }
 
-function TeamDialog({ event, onClose, api }: TeamDialogProps) {
+function TeamDialog({ event, onClose, api, sport }: TeamDialogProps) {
   const [homeTeamEvents, setHomeTeamEvents] = useState<SofascoreEvent[]>([]);
   const [awayTeamEvents, setAwayTeamEvents] = useState<SofascoreEvent[]>([]);
   const [homeTeamPage, setHomeTeamPage] = useState(0);
@@ -19,6 +20,8 @@ function TeamDialog({ event, onClose, api }: TeamDialogProps) {
   const [matchHistory, setMatchHistory] = useState<MatchHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'matches' | 'standings' | 'history'>('matches');
+  const [betStatus, setBetStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [betLoading, setBetLoading] = useState(false);
 
   const MATCHES_PER_PAGE = 5;
 
@@ -27,6 +30,7 @@ function TeamDialog({ event, onClose, api }: TeamDialogProps) {
     setMatchHistory(null); // Reset match history when event changes
     setHomeTeamPage(0); // Reset pagination when event changes
     setAwayTeamPage(0); // Reset pagination when event changes
+    setBetStatus(null);
     loadTeamEvents();
     setActiveTab('matches');
   }, [event]);
@@ -130,6 +134,27 @@ function TeamDialog({ event, onClose, api }: TeamDialogProps) {
   const homePoints = calculatePoints(homeTeamEvents.slice(0, 5), event.homeTeam.id);
   const awayPoints = calculatePoints(awayTeamEvents.slice(0, 5), event.awayTeam.id);
 
+  const handlePlaceBet = async (selection: BetSelection) => {
+    setBetLoading(true);
+    setBetStatus(null);
+    try {
+      await betsApi.createBet({
+        eventId: event.id,
+        sport,
+        selection,
+        homeTeamName: event.homeTeam.name,
+        awayTeamName: event.awayTeam.name,
+        startTimestamp: event.startTimestamp,
+      });
+      setBetStatus({ type: 'success', message: `Tagged bet: ${selection}` });
+    } catch (error: any) {
+      const message = error?.message || 'Failed to tag bet';
+      setBetStatus({ type: 'error', message });
+    } finally {
+      setBetLoading(false);
+    }
+  };
+
   return (
     <div className="dialog-overlay" onClick={onClose}>
       <div className="dialog-content" onClick={(e) => e.stopPropagation()}>
@@ -140,6 +165,41 @@ function TeamDialog({ event, onClose, api }: TeamDialogProps) {
           <button className="close-button" onClick={onClose}>
             ×
           </button>
+        </div>
+
+        <div className="bet-section">
+          <div className="bet-title">Tag a bet</div>
+          <div className="bet-actions">
+            <button
+              type="button"
+              className="bet-button"
+              onClick={() => handlePlaceBet('HOME')}
+              disabled={betLoading}
+            >
+              {event.homeTeam.name}
+            </button>
+            <button
+              type="button"
+              className="bet-button"
+              onClick={() => handlePlaceBet('DRAW')}
+              disabled={betLoading}
+            >
+              Draw
+            </button>
+            <button
+              type="button"
+              className="bet-button"
+              onClick={() => handlePlaceBet('AWAY')}
+              disabled={betLoading}
+            >
+              {event.awayTeam.name}
+            </button>
+          </div>
+          {betStatus && (
+            <div className={`bet-status ${betStatus.type}`}>
+              {betStatus.message}
+            </div>
+          )}
         </div>
 
         {event.voting && (

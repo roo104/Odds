@@ -110,3 +110,37 @@ export interface MatchHistoryResponse {
   oddsHistory: OddsHistoryPoint[];
   votesHistory: VotesHistoryPoint[];
 }
+
+export type SportType = 'FOOTBALL' | 'HANDBALL';
+
+export type BetSelection = 'HOME' | 'DRAW' | 'AWAY';
+
+export interface MatchBet {
+  id: number;
+  eventId: number;
+  sport: SportType;
+  selection: BetSelection;
+  homeTeamName: string;
+  awayTeamName: string;
+  startTimestamp: number;
+  finalHomeScore: number | null;
+  finalAwayScore: number | null;
+  createdAt: string;
+}
+
+export interface BetsPageResponse {
+  content: MatchBet[];
+  page: number;
+  size: number;
+  totalPages: number;
+  totalElements: number;
+  stats: BetStatistics;
+}
+
+export interface BetStatistics {
+  totalBets: number;
+  finishedBets: number;
+  wonBets: number;
+  lostBets: number;
+  winRatio: number | null;
+}
