@@ -84,12 +84,50 @@ class BetsService(
         val lostBets = finishedBets - wonBets
         val winRatio = if (finishedBets > 0) wonBets.toDouble() / finishedBets.toDouble() else null
 
+        // Calculate odds-related statistics
+        val betsWithOdds = bets.count { it.odds != null }.toLong()
+
+        val finishedBetsWithOdds = bets.filter {
+            it.finalHomeScore != null && it.finalAwayScore != null && it.odds != null
+        }
+
+        val wonBetsWithOdds = finishedBetsWithOdds.filter { isWinningBet(it) }
+        val lostBetsWithOdds = finishedBetsWithOdds.filter { !isWinningBet(it) }
+
+        val avgWinningOdds = if (wonBetsWithOdds.isNotEmpty()) {
+            wonBetsWithOdds.mapNotNull { it.odds }.average()
+        } else null
+
+        val avgLosingOdds = if (lostBetsWithOdds.isNotEmpty()) {
+            lostBetsWithOdds.mapNotNull { it.odds }.average()
+        } else null
+
+        // Expected Value: (Win Probability * Average Winning Odds) - 1
+        // This shows if your bets have positive expected value
+        val expectedValue = if (finishedBetsWithOdds.isNotEmpty() && avgWinningOdds != null) {
+            val winProbability = wonBetsWithOdds.size.toDouble() / finishedBetsWithOdds.size.toDouble()
+            (winProbability * avgWinningOdds) - 1.0
+        } else null
+
+        // Actual Profit: Sum of (odds - 1) for wins minus number of losses
+        // Assuming 1 unit bet on each, shows total profit/loss in units
+        val actualProfit = if (finishedBetsWithOdds.isNotEmpty()) {
+            val winningsProfit = wonBetsWithOdds.sumOf { (it.odds!! - 1.0) }
+            val lossesAmount = lostBetsWithOdds.size.toDouble()
+            winningsProfit - lossesAmount
+        } else null
+
         return BetStatistics(
             totalBets = totalBets,
             finishedBets = finishedBets,
             wonBets = wonBets,
             lostBets = lostBets,
-            winRatio = winRatio
+            winRatio = winRatio,
+            avgWinningOdds = avgWinningOdds,
+            avgLosingOdds = avgLosingOdds,
+            betsWithOdds = betsWithOdds,
+            expectedValue = expectedValue,
+            actualProfit = actualProfit
         )
     }
 

@@ -162,9 +162,39 @@ function BetsView() {
             {pageData ? `${pageData.totalElements} total` : '—'}
           </span>
         </div>
-        <div className="bets-stats">
-          <span className="stat-label">Win Ratio:</span>
-          <span className="stat-value">{formatWinRatio()}</span>
+        <div className="bets-stats-container">
+          <div className="bets-stats">
+            <span className="stat-label">Win Ratio:</span>
+            <span className="stat-value">{formatWinRatio()}</span>
+          </div>
+          {pageData?.stats.avgWinningOdds && (
+            <div className="bets-stats">
+              <span className="stat-label">Avg Winning Odds:</span>
+              <span className="stat-value stat-positive">{pageData.stats.avgWinningOdds.toFixed(2)}</span>
+            </div>
+          )}
+          {pageData?.stats.avgLosingOdds && (
+            <div className="bets-stats">
+              <span className="stat-label">Avg Losing Odds:</span>
+              <span className="stat-value stat-negative">{pageData.stats.avgLosingOdds.toFixed(2)}</span>
+            </div>
+          )}
+          {pageData?.stats.expectedValue !== null && pageData?.stats.expectedValue !== undefined && (
+            <div className="bets-stats">
+              <span className="stat-label">Expected Value:</span>
+              <span className={`stat-value ${pageData.stats.expectedValue >= 0 ? 'stat-positive' : 'stat-negative'}`}>
+                {pageData.stats.expectedValue >= 0 ? '+' : ''}{(pageData.stats.expectedValue * 100).toFixed(1)}%
+              </span>
+            </div>
+          )}
+          {pageData?.stats.actualProfit !== null && pageData?.stats.actualProfit !== undefined && (
+            <div className="bets-stats">
+              <span className="stat-label">Profit (units):</span>
+              <span className={`stat-value ${pageData.stats.actualProfit >= 0 ? 'stat-positive' : 'stat-negative'}`}>
+                {pageData.stats.actualProfit >= 0 ? '+' : ''}{pageData.stats.actualProfit.toFixed(2)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

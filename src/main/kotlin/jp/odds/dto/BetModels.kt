@@ -42,7 +42,12 @@ data class BetStatistics(
     val finishedBets: Long,
     val wonBets: Long,
     val lostBets: Long,
-    val winRatio: Double?
+    val winRatio: Double?,
+    val avgWinningOdds: Double?,
+    val avgLosingOdds: Double?,
+    val betsWithOdds: Long,
+    val expectedValue: Double?,
+    val actualProfit: Double?
 )
 
 data class UpdateOddsRequest(

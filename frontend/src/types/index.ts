@@ -144,4 +144,9 @@ export interface BetStatistics {
   wonBets: number;
   lostBets: number;
   winRatio: number | null;
+  avgWinningOdds: number | null;
+  avgLosingOdds: number | null;
+  betsWithOdds: number;
+  expectedValue: number | null;
+  actualProfit: number | null;
 }

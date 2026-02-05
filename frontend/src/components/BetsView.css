@@ -28,6 +28,13 @@
   font-size: 13px;
 }
 
+.bets-stats-container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 .bets-stats {
   display: flex;
   align-items: center;
@@ -43,6 +50,14 @@
 .stat-value {
   color: #e0e0e0;
   font-weight: 600;
+}
+
+.stat-positive {
+  color: #86d28a;
+}
+
+.stat-negative {
+  color: #ff8a8a;
 }
 
 .bets-refresh {
