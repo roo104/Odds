@@ -1,0 +1,1 @@
+ALTER TABLE match_bets ADD COLUMN odds DECIMAL(10, 2);

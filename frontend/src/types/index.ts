@@ -125,6 +125,7 @@ export interface MatchBet {
   startTimestamp: number;
   finalHomeScore: number | null;
   finalAwayScore: number | null;
+  odds: number | null;
   createdAt: string;
 }
 

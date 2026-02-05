@@ -10,7 +10,8 @@ data class CreateBetRequest(
     val selection: BetSelection,
     val homeTeamName: String,
     val awayTeamName: String,
-    val startTimestamp: Long
+    val startTimestamp: Long,
+    val odds: Double?
 )
 
 data class MatchBetResponse(
@@ -23,6 +24,7 @@ data class MatchBetResponse(
     val startTimestamp: Long,
     val finalHomeScore: Int?,
     val finalAwayScore: Int?,
+    val odds: Double?,
     val createdAt: Instant
 )
 
@@ -41,4 +43,8 @@ data class BetStatistics(
     val wonBets: Long,
     val lostBets: Long,
     val winRatio: Double?
+)
+
+data class UpdateOddsRequest(
+    val odds: Double?
 )

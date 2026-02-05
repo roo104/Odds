@@ -145,6 +145,7 @@ function TeamDialog({ event, onClose, api, sport }: TeamDialogProps) {
         homeTeamName: event.homeTeam.name,
         awayTeamName: event.awayTeam.name,
         startTimestamp: event.startTimestamp,
+        odds: null,
       });
       setBetStatus({ type: 'success', message: `Tagged bet: ${selection}` });
     } catch (error: any) {

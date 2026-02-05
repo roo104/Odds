@@ -31,6 +31,7 @@ interface CreateBetRequest {
   homeTeamName: string;
   awayTeamName: string;
   startTimestamp: number;
+  odds: number | null;
 }
 
 export const footballApi: MatchesApi = {
@@ -181,6 +182,16 @@ export const betsApi = {
       method: 'POST',
     });
     if (!response.ok) throw new Error('Failed to refresh bet score');
+    return response.json();
+  },
+
+  updateOdds: async (betId: number, odds: number | null): Promise<MatchBet> => {
+    const response = await fetch(`${BETS_API_BASE_URL}/${betId}/odds`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ odds }),
+    });
+    if (!response.ok) throw new Error('Failed to update odds');
     return response.json();
   },
 };

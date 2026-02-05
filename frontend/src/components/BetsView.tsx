@@ -16,6 +16,8 @@ function BetsView() {
   const [selectedBet, setSelectedBet] = useState<MatchBet | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<SofascoreEvent | null>(null);
   const [loadingEvent, setLoadingEvent] = useState(false);
+  const [editingOddsId, setEditingOddsId] = useState<number | null>(null);
+  const [oddsInputValue, setOddsInputValue] = useState<string>('');
 
   useEffect(() => {
     loadBets(page);
@@ -112,6 +114,45 @@ function BetsView() {
     setSelectedBet(null);
   };
 
+  const handleOddsClick = (bet: MatchBet, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingOddsId(bet.id);
+    setOddsInputValue(bet.odds ? bet.odds.toString() : '');
+  };
+
+  const handleOddsBlur = async (betId: number) => {
+    const newOdds = oddsInputValue.trim() ? parseFloat(oddsInputValue) : null;
+
+    if (oddsInputValue.trim() && (isNaN(newOdds!) || newOdds! <= 0)) {
+      setError('Invalid odds value');
+      setEditingOddsId(null);
+      return;
+    }
+
+    try {
+      const updatedBet = await betsApi.updateOdds(betId, newOdds);
+      setPageData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          content: prev.content.map((bet) => (bet.id === betId ? updatedBet : bet)),
+        };
+      });
+    } catch (err: any) {
+      setError(err?.message || 'Failed to update odds');
+    } finally {
+      setEditingOddsId(null);
+    }
+  };
+
+  const handleOddsKeyDown = (e: React.KeyboardEvent, betId: number) => {
+    if (e.key === 'Enter') {
+      handleOddsBlur(betId);
+    } else if (e.key === 'Escape') {
+      setEditingOddsId(null);
+    }
+  };
+
   return (
     <div className="bets-view">
       <div className="bets-header">
@@ -142,6 +183,7 @@ function BetsView() {
                 <th>Sport</th>
                 <th>Match</th>
                 <th>Pick</th>
+                <th>Odds</th>
                 <th>Final</th>
                 <th>Refresh</th>
               </tr>
@@ -153,6 +195,24 @@ function BetsView() {
                   <td>{bet.sport}</td>
                   <td>{bet.homeTeamName} vs {bet.awayTeamName}</td>
                   <td>{formatSelection(bet)}</td>
+                  <td onClick={(e) => handleOddsClick(bet, e)} className="odds-cell">
+                    {editingOddsId === bet.id ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="1"
+                        value={oddsInputValue}
+                        onChange={(e) => setOddsInputValue(e.target.value)}
+                        onBlur={() => handleOddsBlur(bet.id)}
+                        onKeyDown={(e) => handleOddsKeyDown(e, bet.id)}
+                        className="odds-edit-input"
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <span className="odds-display">{bet.odds ? bet.odds.toFixed(2) : '-'}</span>
+                    )}
+                  </td>
                   <td>{getFinalScoreLabel(bet)}</td>
                   <td>
                     <button

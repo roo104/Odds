@@ -39,6 +39,9 @@ class MatchBet(
     @Column(name = "final_away_score")
     var finalAwayScore: Int? = null,
 
+    @Column(name = "odds")
+    var odds: Double? = null,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now()
 )

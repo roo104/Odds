@@ -97,3 +97,45 @@
 .bets-view .matches-table tbody tr.losing-bet:hover {
   background-color: rgba(239, 83, 80, 0.22);
 }
+
+.odds-cell {
+  cursor: text;
+}
+
+.odds-display {
+  display: inline-block;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+.odds-cell:hover .odds-display {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.odds-edit-input {
+  width: 70px;
+  background-color: #3a3a3a;
+  color: #e0e0e0;
+  border: 1px solid #777;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.odds-edit-input:focus {
+  outline: none;
+  border-color: #999;
+}
+
+/* Remove number input arrows */
+.odds-edit-input::-webkit-outer-spin-button,
+.odds-edit-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.odds-edit-input[type=number] {
+  -moz-appearance: textfield;
+}

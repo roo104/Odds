@@ -95,6 +95,38 @@
   cursor: not-allowed;
 }
 
+.odds-input-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.odds-input-container label {
+  color: #a0a0a0;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.odds-input {
+  background-color: #3a3a3a;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  width: 100px;
+}
+
+.odds-input:focus {
+  outline: none;
+  border-color: #777;
+}
+
+.odds-input::placeholder {
+  color: #666;
+}
+
 .bet-status {
   margin-top: 10px;
   font-size: 12px;

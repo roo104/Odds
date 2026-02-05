@@ -45,7 +45,8 @@ class BetsService(
             selection = request.selection,
             homeTeamName = request.homeTeamName,
             awayTeamName = request.awayTeamName,
-            startTimestamp = request.startTimestamp
+            startTimestamp = request.startTimestamp,
+            odds = request.odds
         )
         logger.info("Creating new bet for eventId=${request.eventId}, selection=${request.selection}")
         matchBetRepository.save(bet).toResponse()
@@ -65,6 +66,15 @@ class BetsService(
             totalElements = page.totalElements,
             stats = stats
         )
+    }
+
+    suspend fun updateOdds(betId: Long, odds: Double?): MatchBetResponse = withContext(Dispatchers.IO) {
+        logger.info("Updating odds for betId=$betId to odds=$odds")
+        val bet = matchBetRepository.findById(betId).orElseThrow {
+            IllegalArgumentException("Bet not found: $betId")
+        }
+        bet.odds = odds
+        matchBetRepository.save(bet).toResponse()
     }
 
     private fun calculateStatistics(bets: List<MatchBet>): BetStatistics {
@@ -155,6 +165,7 @@ class BetsService(
         startTimestamp = startTimestamp,
         finalHomeScore = finalHomeScore,
         finalAwayScore = finalAwayScore,
+        odds = odds,
         createdAt = createdAt
     )
 }
