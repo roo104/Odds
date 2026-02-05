@@ -376,7 +376,7 @@ function HandballMatchesView() {
         <TeamDialog
           event={selectedEvent}
           api={handballApi}
-          sport="HANDBALL"
+          sport="Handball"
           onClose={() => setSelectedEvent(null)}
         />
       )}

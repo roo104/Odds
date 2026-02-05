@@ -111,7 +111,7 @@ export interface MatchHistoryResponse {
   votesHistory: VotesHistoryPoint[];
 }
 
-export type SportType = 'FOOTBALL' | 'HANDBALL';
+export type SportType = 'Football' | 'Handball';
 
 export type BetSelection = 'HOME' | 'DRAW' | 'AWAY';
 

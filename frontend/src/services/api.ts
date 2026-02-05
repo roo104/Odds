@@ -162,7 +162,11 @@ export const betsApi = {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error('Failed to create bet');
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Failed to create bet:', response.status, errorText);
+      throw new Error(`Failed to create bet: ${response.status} - ${errorText}`);
+    }
     return response.json();
   },
 

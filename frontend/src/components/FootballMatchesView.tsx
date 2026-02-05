@@ -397,7 +397,7 @@ function FootballMatchesView() {
         <TeamDialog
           event={selectedEvent}
           api={footballApi}
-          sport="FOOTBALL"
+          sport="Football"
           onClose={() => setSelectedEvent(null)}
         />
       )}
