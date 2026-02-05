@@ -32,6 +32,13 @@ class BetsService(
         .build()
 
     suspend fun createBet(request: CreateBetRequest): MatchBetResponse = withContext(Dispatchers.IO) {
+        // Check if bet already exists for this event and selection
+        val existingBet = matchBetRepository.findByEventIdAndSelection(request.eventId, request.selection)
+        if (existingBet.isPresent) {
+            logger.info("Bet already exists for eventId=${request.eventId}, selection=${request.selection}, returning existing bet")
+            return@withContext existingBet.get().toResponse()
+        }
+
         val bet = MatchBet(
             eventId = request.eventId,
             sport = request.sport,
@@ -40,6 +47,7 @@ class BetsService(
             awayTeamName = request.awayTeamName,
             startTimestamp = request.startTimestamp
         )
+        logger.info("Creating new bet for eventId=${request.eventId}, selection=${request.selection}")
         matchBetRepository.save(bet).toResponse()
     }
 

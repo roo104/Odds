@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react';
-import {betsApi} from '../services/api';
-import {BetsPageResponse, MatchBet} from '../types';
+import {betsApi, footballApi, handballApi} from '../services/api';
+import {BetsPageResponse, MatchBet, SofascoreEvent} from '../types';
+import TeamDialog from './TeamDialog';
 import './BetsView.css';
 import './MatchesTable.css';
 
@@ -12,6 +13,9 @@ function BetsView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshingId, setRefreshingId] = useState<number | null>(null);
+  const [selectedBet, setSelectedBet] = useState<MatchBet | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<SofascoreEvent | null>(null);
+  const [loadingEvent, setLoadingEvent] = useState(false);
 
   useEffect(() => {
     loadBets(page);
@@ -87,6 +91,27 @@ function BetsView() {
     return `${(winRatio * 100).toFixed(1)}% (${wonBets}/${finishedBets})`;
   };
 
+  const handleRowClick = async (bet: MatchBet) => {
+    setSelectedBet(bet);
+    setLoadingEvent(true);
+    setError(null);
+    try {
+      const api = bet.sport === 'Football' ? footballApi : handballApi;
+      const date = new Date(bet.startTimestamp * 1000).toISOString().split('T')[0];
+      const event = await api.refreshSingleMatch(bet.eventId, date);
+      setSelectedEvent(event);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load match details');
+    } finally {
+      setLoadingEvent(false);
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setSelectedEvent(null);
+    setSelectedBet(null);
+  };
+
   return (
     <div className="bets-view">
       <div className="bets-header">
@@ -123,7 +148,7 @@ function BetsView() {
             </thead>
             <tbody>
               {bets.map((bet: MatchBet) => (
-                <tr key={bet.id} className={getBetResultClass(bet)}>
+                <tr key={bet.id} className={getBetResultClass(bet)} onClick={() => handleRowClick(bet)}>
                   <td>{formatDateTime(bet.startTimestamp)}</td>
                   <td>{bet.sport}</td>
                   <td>{bet.homeTeamName} vs {bet.awayTeamName}</td>
@@ -133,7 +158,10 @@ function BetsView() {
                     <button
                       type="button"
                       className="refresh-match-button"
-                      onClick={() => handleRefresh(bet.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRefresh(bet.id);
+                      }}
                       disabled={refreshingId === bet.id}
                     >
                       {refreshingId === bet.id ? '↻' : '⟳'}
@@ -163,6 +191,21 @@ function BetsView() {
           Next
         </button>
       </div>
+
+      {selectedEvent && selectedBet && (
+        <TeamDialog
+          event={selectedEvent}
+          api={selectedBet.sport === 'Football' ? footballApi : handballApi}
+          sport={selectedBet.sport}
+          onClose={handleCloseDialog}
+        />
+      )}
+
+      {loadingEvent && (
+        <div className="dialog-overlay">
+          <div className="loading">Loading match details...</div>
+        </div>
+      )}
     </div>
   );
 }

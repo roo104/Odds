@@ -79,7 +79,7 @@
 }
 
 .bets-view .matches-table tbody tr {
-  cursor: default;
+  cursor: pointer;
 }
 
 .bets-view .matches-table tbody tr.winning-bet {
