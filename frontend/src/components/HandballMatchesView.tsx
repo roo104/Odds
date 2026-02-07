@@ -20,8 +20,8 @@ function HandballMatchesView() {
   const [loading, setLoading] = useState(false);
   const [filterNotStarted, setFilterNotStarted] = useState(false);
   const [filterMatchCriteria, setFilterMatchCriteria] = useState(false);
-  const [minOdds, setMinOdds] = useState(3.0);
-  const [minVotePercent, setMinVotePercent] = useState(70);
+  const [minOdds, setMinOdds] = useState(2.5);
+  const [minVotePercent, setMinVotePercent] = useState(65);
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
   const [selectedEvent, setSelectedEvent] = useState<SofascoreEvent | null>(null);
   const [refreshingMatchId, setRefreshingMatchId] = useState<number | null>(null);

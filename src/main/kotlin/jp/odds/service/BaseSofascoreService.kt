@@ -11,12 +11,16 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.WebClientRequestException
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import org.springframework.web.reactive.function.client.awaitBody
 import reactor.netty.http.client.HttpClient
+import java.io.IOException
+import java.net.UnknownHostException
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 abstract class BaseSofascoreService(
     webClientBuilder: WebClient.Builder,
@@ -59,6 +63,34 @@ abstract class BaseSofascoreService(
         .defaultHeader("Upgrade-Insecure-Requests", "1")
         .build()
 
+    protected fun logWebClientError(operation: String, exception: Exception, context: Map<String, Any> = emptyMap()) {
+        val contextStr = if (context.isNotEmpty()) {
+            " [${context.entries.joinToString(", ") { "${it.key}=${it.value}" }}]"
+        } else ""
+
+        when (exception) {
+            is WebClientResponseException -> {
+                val statusCode = exception.statusCode.value()
+                val responseBody = exception.responseBodyAsString.take(200).let {
+                    if (it.length == 200) "$it..." else it
+                }
+                logger.warn(
+                    "HTTP $statusCode error during $operation$contextStr - Response: ${responseBody.ifEmpty { "empty" }}"
+                )
+            }
+            is WebClientRequestException -> {
+                val cause = exception.cause
+                when (cause) {
+                    is TimeoutException -> logger.warn("Timeout during $operation$contextStr - Request took too long")
+                    is UnknownHostException -> logger.warn("Unknown host during $operation$contextStr - ${cause.message}")
+                    is IOException -> logger.warn("Network error during $operation$contextStr - ${cause.message}")
+                    else -> logger.warn("Request failed during $operation$contextStr - ${exception.message}")
+                }
+            }
+            else -> logger.warn("Unexpected error during $operation$contextStr - ${exception.javaClass.simpleName}: ${exception.message}")
+        }
+    }
+
     protected suspend fun fetchOddsForEvent(eventId: Long): Odds? = try {
         val oddsResponse = webClient
             .get()
@@ -88,7 +120,7 @@ abstract class BaseSofascoreService(
             }
         }
     } catch (e: Exception) {
-        logger.debug("Could not fetch odds for event $eventId: ${e.message}")
+        logWebClientError("fetching odds", e, mapOf("eventId" to eventId))
         null
     }
 
@@ -113,7 +145,7 @@ abstract class BaseSofascoreService(
             } else null
         }
     } catch (e: Exception) {
-        logger.warn("Could not fetch voting for event $eventId: ${e.message}", e)
+        logWebClientError("fetching voting", e, mapOf("eventId" to eventId))
         null
     }
 
@@ -126,11 +158,11 @@ abstract class BaseSofascoreService(
 
         logger.debug("Fetched event details for $eventId: status=${response.event?.status?.description}")
         response.event
-    } catch (_: WebClientResponseException.NotFound) {
+    } catch (e: WebClientResponseException.NotFound) {
         logger.debug("Event $eventId not found (404)")
         null
     } catch (e: Exception) {
-        logger.warn("Could not fetch event details for $eventId: ${e.message}")
+        logWebClientError("fetching event details", e, mapOf("eventId" to eventId))
         null
     }
 
@@ -144,7 +176,7 @@ abstract class BaseSofascoreService(
         logger.info("Fetched ${response.events?.size ?: 0} events for team $teamId")
         response.events?.sortedByDescending { it.startTimestamp } ?: emptyList()
     } catch (e: Exception) {
-        logger.warn("Could not fetch events for team $teamId: ${e.message}")
+        logWebClientError("fetching team events", e, mapOf("teamId" to teamId))
         emptyList()
     }
 
@@ -157,11 +189,11 @@ abstract class BaseSofascoreService(
 
         logger.info("Fetched standings for tournament $tournamentId, season $seasonId: ${response.standings?.size} groups")
         response
-    } catch (_: WebClientResponseException.NotFound) {
-        logger.warn("Standings not found for tournament $tournamentId, season $seasonId (404)")
+    } catch (e: WebClientResponseException.NotFound) {
+        logger.debug("Standings not found (404) - tournamentId=$tournamentId, seasonId=$seasonId")
         null
     } catch (e: Exception) {
-        logger.warn("Could not fetch standings for tournament $tournamentId, season $seasonId: ${e.message}")
+        logWebClientError("fetching tournament standings", e, mapOf("tournamentId" to tournamentId, "seasonId" to seasonId))
         null
     }
 
