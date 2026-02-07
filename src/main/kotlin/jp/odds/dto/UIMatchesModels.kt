@@ -19,3 +19,9 @@ data class MatchHistoryResponse(
     val oddsHistory: List<OddsHistoryPoint>,
     val votesHistory: List<VotesHistoryPoint>
 )
+
+data class WinningMatchStatistics(
+    val averageVote: Double,
+    val averageOdds: Double,
+    val totalMatches: Int
+)

@@ -1,0 +1,22 @@
+.statistics-view {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.statistics-header {
+  margin-bottom: 24px;
+}
+
+.statistics-header h1 {
+  margin: 0 0 16px 0;
+  font-size: 28px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.statistics-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

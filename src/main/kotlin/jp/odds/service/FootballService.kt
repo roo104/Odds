@@ -1,5 +1,6 @@
 package jp.odds.service
 
+import jp.odds.dto.WinningMatchStatistics
 import jp.odds.entity.DailyFootballMatchData
 import jp.odds.repository.DailyFootballMatchDataRepository
 import jp.odds.repository.MatchOddsHistoryRepository
@@ -256,5 +257,70 @@ class FootballService(
             dailyFootballMatchDataRepository.saveAll(entities)
         }
         logger.info("Saved ${entities.size} matches to database for date $matchDate")
+    }
+
+    suspend fun getWinningMatchStatistics(): WinningMatchStatistics = withContext(Dispatchers.IO) {
+        val finishedMatches = dailyFootballMatchDataRepository.findAllFinishedMatches()
+
+        val winningMatchData = finishedMatches.mapNotNull { match ->
+            val homeScore = match.homeScore ?: return@mapNotNull null
+            val awayScore = match.awayScore ?: return@mapNotNull null
+
+            val winningVote: Int?
+            val winningOdds: String?
+
+            when {
+                homeScore > awayScore -> {
+                    winningVote = match.votingHome
+                    winningOdds = match.oddsHome
+                }
+                awayScore > homeScore -> {
+                    winningVote = match.votingAway
+                    winningOdds = match.oddsAway
+                }
+                else -> {
+                    winningVote = match.votingDraw
+                    winningOdds = match.oddsDraw
+                }
+            }
+
+            if (winningVote != null && winningOdds != null) {
+                Pair(winningVote, parseOdds(winningOdds))
+            } else {
+                null
+            }
+        }
+
+        if (winningMatchData.isEmpty()) {
+            return@withContext WinningMatchStatistics(
+                averageVote = 0.0,
+                averageOdds = 0.0,
+                totalMatches = 0
+            )
+        }
+
+        val avgVote = winningMatchData.map { it.first }.average()
+        val avgOdds = winningMatchData.map { it.second }.average()
+
+        WinningMatchStatistics(
+            averageVote = avgVote,
+            averageOdds = avgOdds,
+            totalMatches = winningMatchData.size
+        )
+    }
+
+    private fun parseOdds(fractionalOdds: String): Double {
+        return try {
+            val parts = fractionalOdds.split('/')
+            if (parts.size == 2) {
+                val numerator = parts[0].toDouble()
+                val denominator = parts[1].toDouble()
+                (numerator / denominator) + 1.0
+            } else {
+                0.0
+            }
+        } catch (e: Exception) {
+            0.0
+        }
     }
 }

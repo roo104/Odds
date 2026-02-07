@@ -8,6 +8,12 @@ import {
     StandingsResponse
 } from '../types';
 
+interface WinningMatchStatistics {
+  averageVote: number;
+  averageOdds: number;
+  totalMatches: number;
+}
+
 interface MatchesApi {
   getTodayMatches: () => Promise<SofascoreEvent[]>;
   getMatchesByDate: (date: string, includeAllLeagues?: boolean) => Promise<SofascoreEvent[]>;
@@ -16,6 +22,7 @@ interface MatchesApi {
   refreshSingleMatch: (eventId: number, date: string) => Promise<SofascoreEvent>;
   getTournamentStandings: (tournamentId: number, seasonId: number) => Promise<StandingsResponse | null>;
   getMatchHistory: (eventId: number) => Promise<MatchHistoryResponse>;
+  getWinningMatchStatistics?: () => Promise<WinningMatchStatistics>;
 }
 
 export default MatchesApi
@@ -94,6 +101,12 @@ export const footballApi: MatchesApi = {
     if (!response.ok) throw new Error('Failed to fetch match history');
     return response.json();
   },
+
+  getWinningMatchStatistics: async (): Promise<WinningMatchStatistics> => {
+    const response = await fetch(`${FOOTBALL_API_BASE_URL}/statistics/winning-matches`);
+    if (!response.ok) throw new Error('Failed to fetch winning match statistics');
+    return response.json();
+  },
 };
 
 export const handballApi: MatchesApi = {
@@ -153,6 +166,12 @@ export const handballApi: MatchesApi = {
   getMatchHistory: async (eventId: number): Promise<MatchHistoryResponse> => {
     const response = await fetch(`${HANDBALL_API_BASE_URL}/matches/${eventId}/history`);
     if (!response.ok) throw new Error('Failed to fetch match history');
+    return response.json();
+  },
+
+  getWinningMatchStatistics: async (): Promise<WinningMatchStatistics> => {
+    const response = await fetch(`${HANDBALL_API_BASE_URL}/statistics/winning-matches`);
+    if (!response.ok) throw new Error('Failed to fetch winning match statistics');
     return response.json();
   },
 };

@@ -1,0 +1,43 @@
+.statistics-card {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  color: #fff;
+}
+
+.statistics-card h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #4a9eff;
+}
+
+.statistics-content {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #4a9eff;
+}
+
+.statistics-card.error {
+  border-color: #ff4444;
+  color: #ff4444;
+}
