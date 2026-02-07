@@ -35,6 +35,7 @@ abstract class BaseSofascoreService(
                     .doOnConnected { conn ->
                         conn.addHandlerLast(ReadTimeoutHandler(10, TimeUnit.SECONDS))
                     }
+                    .compress(true)
             )
         )
         .baseUrl("https://api.sofascore.com/api/v1")
@@ -47,7 +48,6 @@ abstract class BaseSofascoreService(
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
         )
         .defaultHeader("Accept-Language", "en-US,en;q=0.9")
-        .defaultHeader("Accept-Encoding", "gzip, deflate, br, zstd")
         .defaultHeader("Cache-Control", "max-age=0")
         .defaultHeader("Sec-Fetch-Dest", "document")
         .defaultHeader("Sec-Fetch-Mode", "navigate")

@@ -2,11 +2,12 @@ import {useState} from 'react';
 import FootballMatchesView from './components/FootballMatchesView';
 import HandballMatchesView from './components/HandballMatchesView';
 import BetsView from './components/BetsView';
+import StandingsView from './components/StandingsView';
 import './App.css';
 
 function App() {
   const [sport, setSport] = useState<'football' | 'handball'>('football');
-  const [activeView, setActiveView] = useState<'matches' | 'bets'>('matches');
+  const [activeView, setActiveView] = useState<'matches' | 'bets' | 'standings'>('matches');
 
   return (
     <div className="app">
@@ -17,6 +18,13 @@ function App() {
           onClick={() => setActiveView('matches')}
         >
           Matches
+        </button>
+        <button
+          type="button"
+          className={`menu-button ${activeView === 'standings' ? 'active' : ''}`}
+          onClick={() => setActiveView('standings')}
+        >
+          Standings
         </button>
         <button
           type="button"
@@ -48,6 +56,8 @@ function App() {
           {sport === 'football' ? <FootballMatchesView /> : <HandballMatchesView />}
         </>
       )}
+
+      {activeView === 'standings' && <StandingsView />}
 
       {activeView === 'bets' && <BetsView />}
     </div>

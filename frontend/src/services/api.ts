@@ -23,6 +23,7 @@ export default MatchesApi
 const FOOTBALL_API_BASE_URL = 'http://localhost:8080/api/football';
 const HANDBALL_API_BASE_URL = 'http://localhost:8080/api/handball';
 const BETS_API_BASE_URL = 'http://localhost:8080/api/bets';
+const STANDINGS_API_BASE_URL = 'http://localhost:8080/api/standings';
 
 interface CreateBetRequest {
   eventId: number;
@@ -153,6 +154,25 @@ export const handballApi: MatchesApi = {
     const response = await fetch(`${HANDBALL_API_BASE_URL}/matches/${eventId}/history`);
     if (!response.ok) throw new Error('Failed to fetch match history');
     return response.json();
+  },
+};
+
+export const standingsApi = {
+  getMajorLeaguesStandings: async (): Promise<Record<string, StandingsResponse | null>> => {
+    const response = await fetch(`${STANDINGS_API_BASE_URL}/major-leagues`);
+    if (!response.ok) throw new Error('Failed to fetch major leagues standings');
+    return response.json();
+  },
+
+  getTournamentStandings: async (tournamentId: number, seasonId: number): Promise<StandingsResponse | null> => {
+    try {
+      const response = await fetch(`${STANDINGS_API_BASE_URL}/tournament/${tournamentId}/season/${seasonId}`);
+      if (!response.ok) return null;
+      return response.json();
+    } catch (error) {
+      console.error('getTournamentStandings error:', error);
+      return null;
+    }
   },
 };
 
