@@ -64,13 +64,27 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
     const homeVote = match.voting.home ?? 0;
     const drawVote = match.voting.draw ?? 0;
     const awayVote = match.voting.away ?? 0;
-    
+
     if (homeVote === 0 && drawVote === 0 && awayVote === 0) return null;
-    
+
     const maxVote = Math.max(homeVote, drawVote, awayVote);
     if (homeVote === maxVote) return 'home';
     if (drawVote === maxVote) return 'draw';
     return 'away';
+  };
+
+  const hasOdds = (match: SofascoreEvent): boolean => {
+    return !!match.odds;
+  };
+
+  const getMatchResult = (match: SofascoreEvent): 'home-win' | 'away-win' | 'draw' | null => {
+    if (match.status.type !== 'finished') return null;
+    const homeScore = match.homeScore?.current;
+    const awayScore = match.awayScore?.current;
+    if (homeScore === undefined || awayScore === undefined) return null;
+    if (homeScore > awayScore) return 'home-win';
+    if (awayScore > homeScore) return 'away-win';
+    return 'draw';
   };
 
   const getTournamentFlag = (match: SofascoreEvent): string | null => {
@@ -104,7 +118,8 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
         <tbody>
           {matches.map((match) => {
             const highestVote = getHighestVote(match);
-            
+            const matchResult = getMatchResult(match);
+
             return (
               <tr
                 key={match.id}
@@ -112,18 +127,22 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
                 className={shouldHighlight(match) ? 'highlight-row' : ''}
               >
                 <td>{formatDateTime(match.startTimestamp)}</td>
-                <td>{match.homeTeam.name}</td>
-                <td>{match.awayTeam.name}</td>
+                <td className={matchResult === 'home-win' ? 'winner' : matchResult === 'away-win' ? 'loser' : ''}>
+                  {match.homeTeam.name}
+                </td>
+                <td className={matchResult === 'away-win' ? 'winner' : matchResult === 'home-win' ? 'loser' : ''}>
+                  {match.awayTeam.name}
+                </td>
                 <td>
                   {match.homeScore?.current ?? '-'} - {match.awayScore?.current ?? '-'}
                 </td>
-                <td className={highestVote === 'home' ? 'highest-value' : ''}>
+                <td className={hasOdds(match) && highestVote === 'home' ? 'highest-value' : ''}>
                   {formatOdds(match.odds?.home)}
                 </td>
-                <td className={highestVote === 'draw' ? 'highest-value' : ''}>
+                <td className={hasOdds(match) && highestVote === 'draw' ? 'highest-value' : ''}>
                   {formatOdds(match.odds?.draw)}
                 </td>
-                <td className={highestVote === 'away' ? 'highest-value' : ''}>
+                <td className={hasOdds(match) && highestVote === 'away' ? 'highest-value' : ''}>
                   {formatOdds(match.odds?.away)}
                 </td>
                 <td className={highestVote === 'home' ? 'highest-value' : ''}>
