@@ -14,6 +14,19 @@ interface WinningMatchStatistics {
   totalMatches: number;
 }
 
+interface LeagueStatistics {
+  tournamentId: number;
+  tournamentName: string;
+  averageVote: number;
+  averageOdds: number;
+  totalMatches: number;
+}
+
+interface WinningMatchStatisticsByLeague {
+  overall: WinningMatchStatistics;
+  byLeague: LeagueStatistics[];
+}
+
 interface MatchesApi {
   getTodayMatches: () => Promise<SofascoreEvent[]>;
   getMatchesByDate: (date: string, includeAllLeagues?: boolean) => Promise<SofascoreEvent[]>;
@@ -23,6 +36,7 @@ interface MatchesApi {
   getTournamentStandings: (tournamentId: number, seasonId: number) => Promise<StandingsResponse | null>;
   getMatchHistory: (eventId: number) => Promise<MatchHistoryResponse>;
   getWinningMatchStatistics?: () => Promise<WinningMatchStatistics>;
+  getWinningMatchStatisticsByLeague?: (country?: string) => Promise<WinningMatchStatisticsByLeague>;
 }
 
 export default MatchesApi
@@ -107,6 +121,15 @@ export const footballApi: MatchesApi = {
     if (!response.ok) throw new Error('Failed to fetch winning match statistics');
     return response.json();
   },
+
+  getWinningMatchStatisticsByLeague: async (country?: string): Promise<WinningMatchStatisticsByLeague> => {
+    const url = country
+      ? `${FOOTBALL_API_BASE_URL}/statistics/winning-matches-by-league?country=${encodeURIComponent(country)}`
+      : `${FOOTBALL_API_BASE_URL}/statistics/winning-matches-by-league`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch winning match statistics by league');
+    return response.json();
+  },
 };
 
 export const handballApi: MatchesApi = {
@@ -172,6 +195,15 @@ export const handballApi: MatchesApi = {
   getWinningMatchStatistics: async (): Promise<WinningMatchStatistics> => {
     const response = await fetch(`${HANDBALL_API_BASE_URL}/statistics/winning-matches`);
     if (!response.ok) throw new Error('Failed to fetch winning match statistics');
+    return response.json();
+  },
+
+  getWinningMatchStatisticsByLeague: async (country?: string): Promise<WinningMatchStatisticsByLeague> => {
+    const url = country
+      ? `${HANDBALL_API_BASE_URL}/statistics/winning-matches-by-league?country=${encodeURIComponent(country)}`
+      : `${HANDBALL_API_BASE_URL}/statistics/winning-matches-by-league`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch winning match statistics by league');
     return response.json();
   },
 };

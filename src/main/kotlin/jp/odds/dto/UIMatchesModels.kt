@@ -25,3 +25,16 @@ data class WinningMatchStatistics(
     val averageOdds: Double,
     val totalMatches: Int
 )
+
+data class LeagueStatistics(
+    val tournamentId: Long,
+    val tournamentName: String,
+    val averageVote: Double,
+    val averageOdds: Double,
+    val totalMatches: Int
+)
+
+data class WinningMatchStatisticsByLeague(
+    val overall: WinningMatchStatistics,
+    val byLeague: List<LeagueStatistics>
+)

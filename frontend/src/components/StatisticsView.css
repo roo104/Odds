@@ -1,6 +1,6 @@
 .statistics-view {
   padding: 20px;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -15,8 +15,155 @@
   color: #fff;
 }
 
+.controls-row {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.country-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.country-filter label {
+  font-size: 14px;
+  color: #b0b0b0;
+}
+
+.country-select {
+  background-color: #2d2d2d;
+  color: #e0e0e0;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  min-width: 180px;
+}
+
+.country-select:hover {
+  background-color: #3a3a3a;
+}
+
+.country-select:focus {
+  outline: none;
+  border-color: #4a7c59;
+}
+
+.filter-badge {
+  color: #4a9eff;
+  font-size: 18px;
+}
+
 .statistics-content {
   display: flex;
   flex-direction: column;
+  gap: 32px;
+}
+
+.loading, .error {
+  padding: 32px;
+  text-align: center;
+  color: #888;
+  font-size: 16px;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+}
+
+.error {
+  color: #ff4444;
+  border-color: #ff4444;
+}
+
+.overall-stats h2 {
+  margin: 0 0 16px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
+}
+
+.stat-card {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #aaa;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 600;
+  color: #4a9eff;
+}
+
+.league-stats h2 {
+  margin: 0 0 16px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.league-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.league-card {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.league-name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #333;
+}
+
+.league-stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.league-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.league-stat-label {
+  font-size: 13px;
+  color: #aaa;
+}
+
+.league-stat-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #4a9eff;
 }

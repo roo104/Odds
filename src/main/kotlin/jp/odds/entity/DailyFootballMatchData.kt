@@ -5,9 +5,14 @@ import java.time.Instant
 import java.time.LocalDate
 
 @Entity
-@Table(name = "daily_football_match_data", uniqueConstraints = [
-    UniqueConstraint(columnNames = ["event_id"])
-])
+@Table(name = "daily_football_match_data",
+    uniqueConstraints = [
+        UniqueConstraint(columnNames = ["event_id"])
+    ],
+    indexes = [
+        Index(name = "idx_football_status_id", columnList = "status_type, id DESC")
+    ]
+)
 data class DailyFootballMatchData(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

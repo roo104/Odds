@@ -1,6 +1,8 @@
 package jp.odds.service
 
+import jp.odds.dto.LeagueStatistics
 import jp.odds.dto.WinningMatchStatistics
+import jp.odds.dto.WinningMatchStatisticsByLeague
 import jp.odds.entity.DailyFootballMatchData
 import jp.odds.repository.DailyFootballMatchDataRepository
 import jp.odds.repository.MatchOddsHistoryRepository
@@ -9,6 +11,7 @@ import jp.odds.service.response.model.ScheduledEventsResponse
 import jp.odds.service.response.model.SofascoreEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
@@ -260,7 +263,8 @@ class FootballService(
     }
 
     suspend fun getWinningMatchStatistics(): WinningMatchStatistics = withContext(Dispatchers.IO) {
-        val finishedMatches = dailyFootballMatchDataRepository.findAllFinishedMatches()
+        val pageable = PageRequest.of(0, 500)
+        val finishedMatches = dailyFootballMatchDataRepository.findTop500FinishedMatches(pageable)
 
         val winningMatchData = finishedMatches.mapNotNull { match ->
             val homeScore = match.homeScore ?: return@mapNotNull null
@@ -306,6 +310,88 @@ class FootballService(
             averageVote = avgVote,
             averageOdds = avgOdds,
             totalMatches = winningMatchData.size
+        )
+    }
+
+    suspend fun getWinningMatchStatisticsByLeague(countryName: String? = null): WinningMatchStatisticsByLeague = withContext(Dispatchers.IO) {
+        val pageable = PageRequest.of(0, 500)
+        val finishedMatches = if (countryName != null) {
+            dailyFootballMatchDataRepository.findTop500FinishedMatchesByCountry(countryName, pageable)
+        } else {
+            dailyFootballMatchDataRepository.findTop500FinishedMatches(pageable)
+        }
+
+        data class MatchWinningData(
+            val tournamentId: Long,
+            val tournamentName: String,
+            val vote: Int,
+            val odds: Double
+        )
+
+        val winningMatchData = finishedMatches.mapNotNull { match ->
+            val homeScore = match.homeScore ?: return@mapNotNull null
+            val awayScore = match.awayScore ?: return@mapNotNull null
+
+            val winningVote: Int?
+            val winningOdds: String?
+
+            when {
+                homeScore > awayScore -> {
+                    winningVote = match.votingHome
+                    winningOdds = match.oddsHome
+                }
+                awayScore > homeScore -> {
+                    winningVote = match.votingAway
+                    winningOdds = match.oddsAway
+                }
+                else -> {
+                    winningVote = match.votingDraw
+                    winningOdds = match.oddsDraw
+                }
+            }
+
+            if (winningVote != null && winningOdds != null) {
+                MatchWinningData(
+                    tournamentId = match.tournamentId,
+                    tournamentName = match.tournamentName,
+                    vote = winningVote,
+                    odds = parseOdds(winningOdds)
+                )
+            } else {
+                null
+            }
+        }
+
+        val overall = if (winningMatchData.isEmpty()) {
+            WinningMatchStatistics(
+                averageVote = 0.0,
+                averageOdds = 0.0,
+                totalMatches = 0
+            )
+        } else {
+            WinningMatchStatistics(
+                averageVote = winningMatchData.map { it.vote }.average(),
+                averageOdds = winningMatchData.map { it.odds }.average(),
+                totalMatches = winningMatchData.size
+            )
+        }
+
+        val byLeague = winningMatchData
+            .groupBy { it.tournamentId to it.tournamentName }
+            .map { (tournamentInfo, matches) ->
+                LeagueStatistics(
+                    tournamentId = tournamentInfo.first,
+                    tournamentName = tournamentInfo.second,
+                    averageVote = matches.map { it.vote }.average(),
+                    averageOdds = matches.map { it.odds }.average(),
+                    totalMatches = matches.size
+                )
+            }
+            .sortedByDescending { it.totalMatches }
+
+        WinningMatchStatisticsByLeague(
+            overall = overall,
+            byLeague = byLeague
         )
     }
 

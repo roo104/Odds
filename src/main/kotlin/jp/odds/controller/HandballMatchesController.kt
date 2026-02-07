@@ -1,9 +1,6 @@
 package jp.odds.controller
 
-import jp.odds.dto.MatchHistoryResponse
-import jp.odds.dto.OddsHistoryPoint
-import jp.odds.dto.VotesHistoryPoint
-import jp.odds.dto.WinningMatchStatistics
+import jp.odds.dto.*
 import jp.odds.service.HandballService
 import jp.odds.service.response.model.SofascoreEvent
 import jp.odds.service.response.model.StandingsResponse
@@ -75,4 +72,9 @@ class HandballMatchesController(private val handballService: HandballService) {
 
     @GetMapping("/statistics/winning-matches")
     suspend fun getWinningMatchStatistics(): WinningMatchStatistics = handballService.getWinningMatchStatistics()
+
+    @GetMapping("/statistics/winning-matches-by-league")
+    suspend fun getWinningMatchStatisticsByLeague(
+        @RequestParam(required = false) country: String?
+    ): WinningMatchStatisticsByLeague = handballService.getWinningMatchStatisticsByLeague(country)
 }
