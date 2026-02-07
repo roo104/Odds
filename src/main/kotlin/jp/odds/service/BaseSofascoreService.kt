@@ -1,5 +1,7 @@
 package jp.odds.service
 
+import io.netty.channel.ChannelOption
+import io.netty.handler.timeout.ReadTimeoutHandler
 import jp.odds.repository.MatchOddsHistoryRepository
 import jp.odds.repository.MatchVotesHistoryRepository
 import jp.odds.service.response.model.*
@@ -7,10 +9,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import org.springframework.web.reactive.function.client.awaitBody
+import reactor.netty.http.client.HttpClient
+import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 
 abstract class BaseSofascoreService(
     webClientBuilder: WebClient.Builder,
@@ -20,6 +26,17 @@ abstract class BaseSofascoreService(
     protected val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
     protected val webClient: WebClient = webClientBuilder
+        .clientConnector(
+            ReactorClientHttpConnector(
+                HttpClient.create()
+                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+                    .option(ChannelOption.SO_TIMEOUT, 10000)
+                    .responseTimeout(Duration.ofSeconds(10))
+                    .doOnConnected { conn ->
+                        conn.addHandlerLast(ReadTimeoutHandler(10, TimeUnit.SECONDS))
+                    }
+            )
+        )
         .baseUrl("https://api.sofascore.com/api/v1")
         .defaultHeader(
             "User-Agent",
