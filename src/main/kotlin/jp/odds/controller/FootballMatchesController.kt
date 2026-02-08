@@ -77,6 +77,7 @@ class FootballMatchesController(private val footballService: FootballService) {
 
     @GetMapping("/statistics/winning-matches-by-league")
     suspend fun getWinningMatchStatisticsByLeague(
-        @RequestParam(required = false) country: String?
-    ): WinningMatchStatisticsByLeague = footballService.getWinningMatchStatisticsByLeague(country)
+        @RequestParam(required = false) country: String?,
+        @RequestParam(required = false, defaultValue = "false") topLeaguesOnly: Boolean
+    ): WinningMatchStatisticsByLeague = footballService.getWinningMatchStatisticsByLeague(country, topLeaguesOnly)
 }

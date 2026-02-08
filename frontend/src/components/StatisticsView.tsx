@@ -22,14 +22,15 @@ interface WinningMatchStatisticsByLeague {
 function StatisticsView() {
   const [sport, setSport] = useState<'football' | 'handball'>('handball');
   const [selectedCountry, setSelectedCountry] = useState<string>('');
+  const [topLeaguesOnly, setTopLeaguesOnly] = useState<boolean>(false);
   const [statistics, setStatistics] = useState<WinningMatchStatisticsByLeague | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [availableCountries, setAvailableCountries] = useState<string[]>([]);
+  const [, setAvailableCountries] = useState<string[]>([]);
 
   useEffect(() => {
     loadStatistics();
-  }, [sport, selectedCountry]);
+  }, [sport, selectedCountry, topLeaguesOnly]);
 
   const loadStatistics = async () => {
     setLoading(true);
@@ -37,7 +38,10 @@ function StatisticsView() {
     try {
       const api = sport === 'handball' ? handballApi : footballApi;
       if (api.getWinningMatchStatisticsByLeague) {
-        const data = await api.getWinningMatchStatisticsByLeague(selectedCountry || undefined);
+        const data = await api.getWinningMatchStatisticsByLeague(
+          selectedCountry || undefined,
+          sport === 'football' ? topLeaguesOnly : undefined
+        );
         setStatistics(data);
 
         // Extract unique countries from league data
@@ -123,6 +127,19 @@ function StatisticsView() {
               <option value="USA">USA</option>
             </select>
           </div>
+
+          {sport === 'football' && (
+            <div className="top-leagues-filter">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={topLeaguesOnly}
+                  onChange={(e) => setTopLeaguesOnly(e.target.checked)}
+                />
+                Top Leagues Only
+              </label>
+            </div>
+          )}
         </div>
       </div>
 
@@ -147,6 +164,10 @@ function StatisticsView() {
                   <span className="stat-value">{statistics.overall.averageOdds.toFixed(2)}</span>
                 </div>
                 <div className="stat-card">
+                  <span className="stat-label">Break-even %</span>
+                  <span className="stat-value">{((1 / statistics.overall.averageOdds) * 100).toFixed(1)}%</span>
+                </div>
+                <div className="stat-card">
                   <span className="stat-label">Total Matches</span>
                   <span className="stat-value">{statistics.overall.totalMatches}</span>
                 </div>
@@ -167,6 +188,10 @@ function StatisticsView() {
                       <div className="league-stat">
                         <span className="league-stat-label">Avg Odds:</span>
                         <span className="league-stat-value">{league.averageOdds.toFixed(2)}</span>
+                      </div>
+                      <div className="league-stat">
+                        <span className="league-stat-label">Break-even %:</span>
+                        <span className="league-stat-value">{((1 / league.averageOdds) * 100).toFixed(1)}%</span>
                       </div>
                       <div className="league-stat">
                         <span className="league-stat-label">Matches:</span>

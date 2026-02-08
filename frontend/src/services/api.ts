@@ -36,7 +36,7 @@ interface MatchesApi {
   getTournamentStandings: (tournamentId: number, seasonId: number) => Promise<StandingsResponse | null>;
   getMatchHistory: (eventId: number) => Promise<MatchHistoryResponse>;
   getWinningMatchStatistics?: () => Promise<WinningMatchStatistics>;
-  getWinningMatchStatisticsByLeague?: (country?: string) => Promise<WinningMatchStatisticsByLeague>;
+  getWinningMatchStatisticsByLeague?: (country?: string, topLeaguesOnly?: boolean) => Promise<WinningMatchStatisticsByLeague>;
 }
 
 export default MatchesApi
@@ -122,10 +122,11 @@ export const footballApi: MatchesApi = {
     return response.json();
   },
 
-  getWinningMatchStatisticsByLeague: async (country?: string): Promise<WinningMatchStatisticsByLeague> => {
-    const url = country
-      ? `${FOOTBALL_API_BASE_URL}/statistics/winning-matches-by-league?country=${encodeURIComponent(country)}`
-      : `${FOOTBALL_API_BASE_URL}/statistics/winning-matches-by-league`;
+  getWinningMatchStatisticsByLeague: async (country?: string, topLeaguesOnly?: boolean): Promise<WinningMatchStatisticsByLeague> => {
+    const params = new URLSearchParams();
+    if (country) params.append('country', country);
+    if (topLeaguesOnly) params.append('topLeaguesOnly', 'true');
+    const url = `${FOOTBALL_API_BASE_URL}/statistics/winning-matches-by-league${params.toString() ? '?' + params.toString() : ''}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch winning match statistics by league');
     return response.json();
@@ -198,10 +199,11 @@ export const handballApi: MatchesApi = {
     return response.json();
   },
 
-  getWinningMatchStatisticsByLeague: async (country?: string): Promise<WinningMatchStatisticsByLeague> => {
-    const url = country
-      ? `${HANDBALL_API_BASE_URL}/statistics/winning-matches-by-league?country=${encodeURIComponent(country)}`
-      : `${HANDBALL_API_BASE_URL}/statistics/winning-matches-by-league`;
+  getWinningMatchStatisticsByLeague: async (country?: string, topLeaguesOnly?: boolean): Promise<WinningMatchStatisticsByLeague> => {
+    const params = new URLSearchParams();
+    if (country) params.append('country', country);
+    if (topLeaguesOnly) params.append('topLeaguesOnly', 'true');
+    const url = `${HANDBALL_API_BASE_URL}/statistics/winning-matches-by-league${params.toString() ? '?' + params.toString() : ''}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch winning match statistics by league');
     return response.json();

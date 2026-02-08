@@ -313,12 +313,13 @@ class FootballService(
         )
     }
 
-    suspend fun getWinningMatchStatisticsByLeague(countryName: String? = null): WinningMatchStatisticsByLeague = withContext(Dispatchers.IO) {
+    suspend fun getWinningMatchStatisticsByLeague(countryName: String? = null, topLeaguesOnly: Boolean = false): WinningMatchStatisticsByLeague = withContext(Dispatchers.IO) {
         val pageable = PageRequest.of(0, 500)
-        val finishedMatches = if (countryName != null) {
-            dailyFootballMatchDataRepository.findTop500FinishedMatchesByCountry(countryName, pageable)
-        } else {
-            dailyFootballMatchDataRepository.findTop500FinishedMatches(pageable)
+        val finishedMatches = when {
+            countryName != null && topLeaguesOnly -> dailyFootballMatchDataRepository.findTop500FinishedMatchesByCountryAndTopLeague(countryName, true, pageable)
+            countryName != null -> dailyFootballMatchDataRepository.findTop500FinishedMatchesByCountry(countryName, pageable)
+            topLeaguesOnly -> dailyFootballMatchDataRepository.findTop500FinishedMatchesByTopLeague(true, pageable)
+            else -> dailyFootballMatchDataRepository.findTop500FinishedMatches(pageable)
         }
 
         data class MatchWinningData(

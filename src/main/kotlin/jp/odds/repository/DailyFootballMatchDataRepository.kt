@@ -29,4 +29,25 @@ interface DailyFootballMatchDataRepository : JpaRepository<DailyFootballMatchDat
         ORDER BY m.id DESC
     """)
     fun findTop500FinishedMatchesByCountry(countryName: String, pageable: org.springframework.data.domain.Pageable): List<DailyFootballMatchData>
+
+    @Query("""
+        SELECT m FROM DailyFootballMatchData m
+        WHERE m.statusType = 'finished'
+        AND m.homeScore IS NOT NULL
+        AND m.awayScore IS NOT NULL
+        AND m.isTopLeague = :isTopLeague
+        ORDER BY m.id DESC
+    """)
+    fun findTop500FinishedMatchesByTopLeague(isTopLeague: Boolean, pageable: org.springframework.data.domain.Pageable): List<DailyFootballMatchData>
+
+    @Query("""
+        SELECT m FROM DailyFootballMatchData m
+        WHERE m.statusType = 'finished'
+        AND m.homeScore IS NOT NULL
+        AND m.awayScore IS NOT NULL
+        AND m.countryName = :countryName
+        AND m.isTopLeague = :isTopLeague
+        ORDER BY m.id DESC
+    """)
+    fun findTop500FinishedMatchesByCountryAndTopLeague(countryName: String, isTopLeague: Boolean, pageable: org.springframework.data.domain.Pageable): List<DailyFootballMatchData>
 }
