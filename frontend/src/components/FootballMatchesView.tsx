@@ -14,9 +14,13 @@ interface ToastMessage {
   type: 'success' | 'error' | 'info';
 }
 
-function FootballMatchesView() {
+interface FootballMatchesViewProps {
+  currentDate: Date;
+  onDateChange: (date: Date) => void;
+}
+
+function FootballMatchesView({ currentDate, onDateChange }: FootballMatchesViewProps) {
   const [allMatches, setAllMatches] = useState<SofascoreEvent[]>([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [filterNotStarted, setFilterNotStarted] = useState(false);
   const [filterMatchCriteria, setFilterMatchCriteria] = useState(false);
@@ -176,17 +180,17 @@ function FootballMatchesView() {
   const handlePreviousDay = () => {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() - 1);
-    setCurrentDate(newDate);
+    onDateChange(newDate);
   };
 
   const handleNextDay = () => {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() + 1);
-    setCurrentDate(newDate);
+    onDateChange(newDate);
   };
 
   const handleToday = () => {
-    setCurrentDate(new Date());
+    onDateChange(new Date());
   };
 
   const handleMatchClick = (event: SofascoreEvent) => {
@@ -329,7 +333,7 @@ function FootballMatchesView() {
     <div className="football-matches-view">
       <DateNavigation
         currentDate={currentDate}
-        onDateChange={setCurrentDate}
+        onDateChange={onDateChange}
         onPreviousDay={handlePreviousDay}
         onNextDay={handleNextDay}
         onToday={handleToday}

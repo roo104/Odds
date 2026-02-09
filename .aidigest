@@ -1,0 +1,89 @@
+# Project Context for AI Assistant
+
+## Project Overview
+This is a sports betting analysis application that tracks and analyzes odds and voting data for football and handball matches. The application fetches data from Sofascore API, stores it in a database, and provides statistics and insights for betting decisions.
+
+## Technology Stack
+- **Backend**: Kotlin with Spring Boot
+- **Frontend**: React with TypeScript
+- **Database**: PostgreSQL (with JPA/Hibernate)
+- **Data Source**: Sofascore API
+
+## Key Architecture Components
+
+### Backend Structure (src/main/kotlin/jp/odds)
+- **Controllers**: Handle HTTP endpoints for football, handball, bets, standings, and statistics
+- **Services**: Business logic for fetching, processing, and analyzing match data
+  - `FootballService.kt`: Football match operations
+  - `HandballService.kt`: Handball match operations
+  - `BetsService.kt`: Betting operations and match result tracking
+  - `BaseSofascoreService.kt`: Common Sofascore API operations
+- **Repositories**: Database access layer
+  - `DailyFootballMatchDataRepository.kt`
+  - `DailyHandballMatchDataRepository.kt`
+  - `MatchOddsHistoryRepository.kt`
+  - `MatchVotesHistoryRepository.kt`
+- **Entities**: Database models for matches, odds, votes, and bets
+- **DTOs**: Data transfer objects for API responses
+
+### Frontend Structure (frontend/src)
+- **Components**:
+  - `FootballMatchesView.tsx`: Football matches display and filtering
+  - `HandballMatchesView.tsx`: Handball matches display and filtering
+  - `StatisticsView.tsx`: Winning match statistics by league
+  - `BetsView.tsx`: Betting tracking interface
+  - `StandingsView.tsx`: League standings display
+- **Services**: API client (`api.ts`)
+- **Types**: TypeScript type definitions
+
+## Important Business Logic
+
+### Match Status
+Matches are considered "finished/ended" when:
+- `statusType` = 'finished' OR
+- `statusDescription` IN ('finished', 'ended', 'full time')
+
+### Odds Format
+- Odds are stored as fractional format (e.g., "5/2")
+- Converted to decimal format for display: (numerator / denominator) + 1.0
+
+### Statistics Calculation
+- Fetches up to 1000 most recent finished matches
+- Calculates average voting percentage and odds for winning outcomes
+- Groups by tournament/league for detailed analysis
+- Supports filtering by country and top leagues (football only)
+
+### Top Leagues (Football)
+Top leagues are identified by tournament IDs hardcoded in `FootballService.kt`
+
+## Common Patterns
+
+### Date Handling
+- Dates are stored as LocalDate in database
+- Timestamps are stored as epoch seconds
+- Frontend maintains shared date state across football/handball views
+
+### Data Fetching Flow
+1. Check database for cached data
+2. If `forceRefresh` or no data, fetch from Sofascore API
+3. Enrich with odds and voting data
+4. Save to database with history tracking
+5. Return enriched data to frontend
+
+### Error Handling
+- Services use try-catch with logging
+- Frontend shows toast notifications for errors
+- Failed API calls fall back to database data when possible
+
+## Database Schema Notes
+- Match data tables: `daily_football_match_data`, `daily_handball_match_data`
+- History tables: `match_odds_history`, `match_votes_history`
+- Bets table: `match_bet`
+- All tables use surrogate key `id` as primary key
+- Event IDs from Sofascore are stored but not used as primary keys
+
+## Current Known Behaviors
+- Statistics queries fetch top 1000 finished matches
+- Match date selection persists when switching between sports
+- Country filters dynamically update based on available matches
+- Refresh operations update both display and database

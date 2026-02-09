@@ -1,6 +1,5 @@
 package jp.odds.service
 
-import jp.odds.dto.LeagueStatistics
 import jp.odds.dto.WinningMatchStatistics
 import jp.odds.dto.WinningMatchStatisticsByLeague
 import jp.odds.entity.DailyHandballMatchData
@@ -248,150 +247,21 @@ class HandballService(
     }
 
     suspend fun getWinningMatchStatistics(): WinningMatchStatistics = withContext(Dispatchers.IO) {
-        val pageable = PageRequest.of(0, 500)
-        val finishedMatches = dailyHandballMatchDataRepository.findTop500FinishedMatches(pageable)
-
-        val winningMatchData = finishedMatches.mapNotNull { match ->
-            val homeScore = match.homeScore ?: return@mapNotNull null
-            val awayScore = match.awayScore ?: return@mapNotNull null
-
-            val winningVote: Int?
-            val winningOdds: String?
-
-            when {
-                homeScore > awayScore -> {
-                    winningVote = match.votingHome
-                    winningOdds = match.oddsHome
-                }
-                awayScore > homeScore -> {
-                    winningVote = match.votingAway
-                    winningOdds = match.oddsAway
-                }
-                else -> {
-                    winningVote = match.votingDraw
-                    winningOdds = match.oddsDraw
-                }
-            }
-
-            if (winningVote != null && winningOdds != null) {
-                Pair(winningVote, parseOdds(winningOdds))
-            } else {
-                null
-            }
-        }
-
-        if (winningMatchData.isEmpty()) {
-            return@withContext WinningMatchStatistics(
-                averageVote = 0.0,
-                averageOdds = 0.0,
-                totalMatches = 0
-            )
-        }
-
-        val avgVote = winningMatchData.map { it.first }.average()
-        val avgOdds = winningMatchData.map { it.second }.average()
-
-        WinningMatchStatistics(
-            averageVote = avgVote,
-            averageOdds = avgOdds,
-            totalMatches = winningMatchData.size
-        )
+        val pageable = PageRequest.of(0, 1000)
+        val finishedMatches = dailyHandballMatchDataRepository.findFinishedMatches(pageable)
+        val winningMatchData = extractWinningMatchData(finishedMatches)
+        calculateWinningStatistics(winningMatchData)
     }
 
     suspend fun getWinningMatchStatisticsByLeague(countryName: String? = null): WinningMatchStatisticsByLeague = withContext(Dispatchers.IO) {
-        val pageable = PageRequest.of(0, 500)
+        val pageable = PageRequest.of(0, 1000)
         val finishedMatches = if (countryName != null) {
-            dailyHandballMatchDataRepository.findTop500FinishedMatchesByCountry(countryName, pageable)
+            dailyHandballMatchDataRepository.findFinishedMatchesByCountry(countryName, pageable)
         } else {
-            dailyHandballMatchDataRepository.findTop500FinishedMatches(pageable)
+            dailyHandballMatchDataRepository.findFinishedMatches(pageable)
         }
 
-        data class MatchWinningData(
-            val tournamentId: Long,
-            val tournamentName: String,
-            val vote: Int,
-            val odds: Double
-        )
-
-        val winningMatchData = finishedMatches.mapNotNull { match ->
-            val homeScore = match.homeScore ?: return@mapNotNull null
-            val awayScore = match.awayScore ?: return@mapNotNull null
-
-            val winningVote: Int?
-            val winningOdds: String?
-
-            when {
-                homeScore > awayScore -> {
-                    winningVote = match.votingHome
-                    winningOdds = match.oddsHome
-                }
-                awayScore > homeScore -> {
-                    winningVote = match.votingAway
-                    winningOdds = match.oddsAway
-                }
-                else -> {
-                    winningVote = match.votingDraw
-                    winningOdds = match.oddsDraw
-                }
-            }
-
-            if (winningVote != null && winningOdds != null) {
-                MatchWinningData(
-                    tournamentId = match.tournamentId,
-                    tournamentName = match.tournamentName,
-                    vote = winningVote,
-                    odds = parseOdds(winningOdds)
-                )
-            } else {
-                null
-            }
-        }
-
-        val overall = if (winningMatchData.isEmpty()) {
-            WinningMatchStatistics(
-                averageVote = 0.0,
-                averageOdds = 0.0,
-                totalMatches = 0
-            )
-        } else {
-            WinningMatchStatistics(
-                averageVote = winningMatchData.map { it.vote }.average(),
-                averageOdds = winningMatchData.map { it.odds }.average(),
-                totalMatches = winningMatchData.size
-            )
-        }
-
-        val byLeague = winningMatchData
-            .groupBy { it.tournamentId to it.tournamentName }
-            .map { (tournamentInfo, matches) ->
-                LeagueStatistics(
-                    tournamentId = tournamentInfo.first,
-                    tournamentName = tournamentInfo.second,
-                    averageVote = matches.map { it.vote }.average(),
-                    averageOdds = matches.map { it.odds }.average(),
-                    totalMatches = matches.size
-                )
-            }
-            .sortedByDescending { it.totalMatches }
-
-        WinningMatchStatisticsByLeague(
-            overall = overall,
-            byLeague = byLeague
-        )
-    }
-
-    private fun parseOdds(fractionalOdds: String): Double {
-        return try {
-            val parts = fractionalOdds.split('/')
-            if (parts.size == 2) {
-                val numerator = parts[0].toDouble()
-                val denominator = parts[1].toDouble()
-                (numerator / denominator) + 1.0
-            } else {
-                0.0
-            }
-        } catch (e: Exception) {
-            0.0
-        }
+        val winningMatchData = extractWinningMatchData(finishedMatches)
+        calculateStatisticsByLeague(winningMatchData)
     }
 }

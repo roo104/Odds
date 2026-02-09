@@ -14,9 +14,13 @@ interface ToastMessage {
   type: 'success' | 'error' | 'info';
 }
 
-function HandballMatchesView() {
+interface HandballMatchesViewProps {
+  currentDate: Date;
+  onDateChange: (date: Date) => void;
+}
+
+function HandballMatchesView({ currentDate, onDateChange }: HandballMatchesViewProps) {
   const [allMatches, setAllMatches] = useState<SofascoreEvent[]>([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [filterNotStarted, setFilterNotStarted] = useState(false);
   const [filterMatchCriteria, setFilterMatchCriteria] = useState(false);
@@ -161,17 +165,17 @@ function HandballMatchesView() {
   const handlePreviousDay = () => {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() - 1);
-    setCurrentDate(newDate);
+    onDateChange(newDate);
   };
 
   const handleNextDay = () => {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() + 1);
-    setCurrentDate(newDate);
+    onDateChange(newDate);
   };
 
   const handleToday = () => {
-    setCurrentDate(new Date());
+    onDateChange(new Date());
   };
 
   const handleMatchClick = (event: SofascoreEvent) => {
@@ -312,7 +316,7 @@ function HandballMatchesView() {
     <div className="handball-matches-view">
       <DateNavigation
         currentDate={currentDate}
-        onDateChange={setCurrentDate}
+        onDateChange={onDateChange}
         onPreviousDay={handlePreviousDay}
         onNextDay={handleNextDay}
         onToday={handleToday}

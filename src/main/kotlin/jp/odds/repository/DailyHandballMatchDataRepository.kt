@@ -1,6 +1,7 @@
 package jp.odds.repository
 
 import jp.odds.entity.DailyHandballMatchData
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
@@ -13,20 +14,20 @@ interface DailyHandballMatchDataRepository : JpaRepository<DailyHandballMatchDat
 
     @Query("""
         SELECT m FROM DailyHandballMatchData m
-        WHERE m.statusType = 'finished'
+        WHERE (LOWER(m.statusType) = 'finished' OR LOWER(m.statusDescription) IN ('finished', 'ended', 'full time'))
         AND m.homeScore IS NOT NULL
         AND m.awayScore IS NOT NULL
         ORDER BY m.id DESC
     """)
-    fun findTop500FinishedMatches(pageable: org.springframework.data.domain.Pageable): List<DailyHandballMatchData>
+    fun findFinishedMatches(pageable: Pageable): List<DailyHandballMatchData>
 
     @Query("""
         SELECT m FROM DailyHandballMatchData m
-        WHERE m.statusType = 'finished'
+        WHERE (LOWER(m.statusType) = 'finished' OR LOWER(m.statusDescription) IN ('finished', 'ended', 'full time'))
         AND m.homeScore IS NOT NULL
         AND m.awayScore IS NOT NULL
         AND m.countryName = :countryName
         ORDER BY m.id DESC
     """)
-    fun findTop500FinishedMatchesByCountry(countryName: String, pageable: org.springframework.data.domain.Pageable): List<DailyHandballMatchData>
+    fun findFinishedMatchesByCountry(countryName: String, pageable: Pageable): List<DailyHandballMatchData>
 }

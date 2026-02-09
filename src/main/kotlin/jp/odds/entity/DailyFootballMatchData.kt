@@ -1,6 +1,7 @@
 package jp.odds.entity
 
 import jakarta.persistence.*
+import jp.odds.model.MatchDataWithResult
 import java.time.Instant
 import java.time.LocalDate
 
@@ -40,10 +41,10 @@ data class DailyFootballMatchData(
     val awayTeamName: String = "",
 
     @Column(name = "tournament_id", nullable = false)
-    val tournamentId: Long = 0,
+    override val tournamentId: Long = 0,
 
     @Column(name = "tournament_name", nullable = false)
-    val tournamentName: String = "",
+    override val tournamentName: String = "",
 
     @Column(name = "season_id")
     val seasonId: Long? = null,
@@ -55,22 +56,22 @@ data class DailyFootballMatchData(
     val countryName: String? = null,
 
     @Column(name = "odds_home")
-    val oddsHome: String? = null,
+    override val oddsHome: String? = null,
 
     @Column(name = "odds_draw")
-    val oddsDraw: String? = null,
+    override val oddsDraw: String? = null,
 
     @Column(name = "odds_away")
-    val oddsAway: String? = null,
+    override val oddsAway: String? = null,
 
     @Column(name = "voting_home")
-    val votingHome: Int? = null,
+    override val votingHome: Int? = null,
 
     @Column(name = "voting_draw")
-    val votingDraw: Int? = null,
+    override val votingDraw: Int? = null,
 
     @Column(name = "voting_away")
-    val votingAway: Int? = null,
+    override val votingAway: Int? = null,
 
     @Column(name = "voting_total")
     val votingTotal: Int? = null,
@@ -82,14 +83,14 @@ data class DailyFootballMatchData(
     val statusDescription: String = "",
 
     @Column(name = "home_score")
-    val homeScore: Int? = null,
+    override val homeScore: Int? = null,
 
     @Column(name = "away_score")
-    val awayScore: Int? = null,
+    override val awayScore: Int? = null,
 
     @Column(name = "last_updated", nullable = true)
     val lastUpdated: Instant? = null,
 
     @Column(name = "is_top_league", nullable = false)
     val isTopLeague: Boolean = true
-)
+) : MatchDataWithResult

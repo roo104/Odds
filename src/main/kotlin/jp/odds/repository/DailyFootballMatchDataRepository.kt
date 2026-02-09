@@ -13,41 +13,41 @@ interface DailyFootballMatchDataRepository : JpaRepository<DailyFootballMatchDat
 
     @Query("""
         SELECT m FROM DailyFootballMatchData m
-        WHERE m.statusType = 'finished'
+        WHERE (LOWER(m.statusType) = 'finished' OR LOWER(m.statusDescription) IN ('finished', 'ended', 'full time'))
         AND m.homeScore IS NOT NULL
         AND m.awayScore IS NOT NULL
         ORDER BY m.id DESC
     """)
-    fun findTop500FinishedMatches(pageable: org.springframework.data.domain.Pageable): List<DailyFootballMatchData>
+    fun findFinishedMatches(pageable: org.springframework.data.domain.Pageable): List<DailyFootballMatchData>
 
     @Query("""
         SELECT m FROM DailyFootballMatchData m
-        WHERE m.statusType = 'finished'
+        WHERE (LOWER(m.statusType) = 'finished' OR LOWER(m.statusDescription) IN ('finished', 'ended', 'full time'))
         AND m.homeScore IS NOT NULL
         AND m.awayScore IS NOT NULL
         AND m.countryName = :countryName
         ORDER BY m.id DESC
     """)
-    fun findTop500FinishedMatchesByCountry(countryName: String, pageable: org.springframework.data.domain.Pageable): List<DailyFootballMatchData>
+    fun findFinishedMatchesByCountry(countryName: String, pageable: org.springframework.data.domain.Pageable): List<DailyFootballMatchData>
 
     @Query("""
         SELECT m FROM DailyFootballMatchData m
-        WHERE m.statusType = 'finished'
+        WHERE (LOWER(m.statusType) = 'finished' OR LOWER(m.statusDescription) IN ('finished', 'ended', 'full time'))
         AND m.homeScore IS NOT NULL
         AND m.awayScore IS NOT NULL
         AND m.isTopLeague = :isTopLeague
         ORDER BY m.id DESC
     """)
-    fun findTop500FinishedMatchesByTopLeague(isTopLeague: Boolean, pageable: org.springframework.data.domain.Pageable): List<DailyFootballMatchData>
+    fun findFinishedMatchesByTopLeague(isTopLeague: Boolean, pageable: org.springframework.data.domain.Pageable): List<DailyFootballMatchData>
 
     @Query("""
         SELECT m FROM DailyFootballMatchData m
-        WHERE m.statusType = 'finished'
+        WHERE (LOWER(m.statusType) = 'finished' OR LOWER(m.statusDescription) IN ('finished', 'ended', 'full time'))
         AND m.homeScore IS NOT NULL
         AND m.awayScore IS NOT NULL
         AND m.countryName = :countryName
         AND m.isTopLeague = :isTopLeague
         ORDER BY m.id DESC
     """)
-    fun findTop500FinishedMatchesByCountryAndTopLeague(countryName: String, isTopLeague: Boolean, pageable: org.springframework.data.domain.Pageable): List<DailyFootballMatchData>
+    fun findFinishedMatchesByCountryAndTopLeague(countryName: String, isTopLeague: Boolean, pageable: org.springframework.data.domain.Pageable): List<DailyFootballMatchData>
 }

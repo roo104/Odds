@@ -10,6 +10,7 @@ import './App.css';
 function App() {
   const [sport, setSport] = useState<'football' | 'handball'>('football');
   const [activeView, setActiveView] = useState<'matches' | 'bets' | 'standings' | 'statistics'>('matches');
+  const [sharedDate, setSharedDate] = useState(new Date());
 
   return (
     <div className="app">
@@ -33,7 +34,11 @@ function App() {
                 Handball
               </button>
             </div>
-            {sport === 'football' ? <FootballMatchesView /> : <HandballMatchesView />}
+            {sport === 'football' ? (
+              <FootballMatchesView currentDate={sharedDate} onDateChange={setSharedDate} />
+            ) : (
+              <HandballMatchesView currentDate={sharedDate} onDateChange={setSharedDate} />
+            )}
           </>
         )}
 

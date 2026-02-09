@@ -2,6 +2,11 @@ package jp.odds.service
 
 import io.netty.channel.ChannelOption
 import io.netty.handler.timeout.ReadTimeoutHandler
+import jp.odds.dto.LeagueStatistics
+import jp.odds.dto.WinningMatchStatistics
+import jp.odds.dto.WinningMatchStatisticsByLeague
+import jp.odds.model.MatchDataWithResult
+import jp.odds.model.MatchWinningData
 import jp.odds.repository.MatchOddsHistoryRepository
 import jp.odds.repository.MatchVotesHistoryRepository
 import jp.odds.service.response.model.*
@@ -372,4 +377,91 @@ abstract class BaseSofascoreService(
         lastUpdated = lastUpdated?.epochSecond ?: 0,
         isTopLeague = isTopLeague
     )
+
+    protected fun parseOdds(fractionalOdds: String): Double = try {
+        val parts = fractionalOdds.split('/')
+        if (parts.size == 2) {
+            val numerator = parts[0].toDouble()
+            val denominator = parts[1].toDouble()
+            (numerator / denominator) + 1.0
+        } else {
+            0.0
+        }
+    } catch (_: Exception) {
+        0.0
+    }
+
+    protected fun <T : MatchDataWithResult> extractWinningMatchData(matches: List<T>): List<MatchWinningData> {
+        return matches.mapNotNull { match ->
+            val homeScore = match.homeScore ?: return@mapNotNull null
+            val awayScore = match.awayScore ?: return@mapNotNull null
+
+            val winningVote: Int?
+            val winningOdds: String?
+
+            when {
+                homeScore > awayScore -> {
+                    winningVote = match.votingHome
+                    winningOdds = match.oddsHome
+                }
+                awayScore > homeScore -> {
+                    winningVote = match.votingAway
+                    winningOdds = match.oddsAway
+                }
+                else -> {
+                    winningVote = match.votingDraw
+                    winningOdds = match.oddsDraw
+                }
+            }
+
+            if (winningVote != null && winningOdds != null) {
+                MatchWinningData(
+                    tournamentId = match.tournamentId,
+                    tournamentName = match.tournamentName,
+                    vote = winningVote,
+                    odds = parseOdds(winningOdds)
+                )
+            } else {
+                null
+            }
+        }
+    }
+
+    protected fun calculateWinningStatistics(winningMatchData: List<MatchWinningData>): WinningMatchStatistics {
+        if (winningMatchData.isEmpty()) {
+            return WinningMatchStatistics(
+                averageVote = 0.0,
+                averageOdds = 0.0,
+                totalMatches = 0
+            )
+        }
+
+        return WinningMatchStatistics(
+            averageVote = winningMatchData.map { it.vote }.average(),
+            averageOdds = winningMatchData.map { it.odds }.average(),
+            totalMatches = winningMatchData.size
+        )
+    }
+
+    protected fun calculateStatisticsByLeague(winningMatchData: List<MatchWinningData>): WinningMatchStatisticsByLeague {
+        val overall = calculateWinningStatistics(winningMatchData)
+
+        val byLeague = winningMatchData
+            .groupBy { it.tournamentId to it.tournamentName }
+            .map { (tournamentInfo, matches) ->
+                LeagueStatistics(
+                    tournamentId = tournamentInfo.first,
+                    tournamentName = tournamentInfo.second,
+                    averageVote = matches.map { it.vote }.average(),
+                    averageOdds = matches.map { it.odds }.average(),
+                    totalMatches = matches.size
+                )
+            }
+            .sortedByDescending { it.totalMatches }
+
+        return WinningMatchStatisticsByLeague(
+            overall = overall,
+            byLeague = byLeague
+        )
+    }
 }
