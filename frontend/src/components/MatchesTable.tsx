@@ -127,10 +127,10 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
                 className={shouldHighlight(match) ? 'highlight-row' : ''}
               >
                 <td>{formatDateTime(match.startTimestamp)}</td>
-                <td className={matchResult === 'home-win' ? 'winner' : matchResult === 'away-win' ? 'loser' : ''}>
+                <td className={matchResult === 'home-win' ? 'winner' : matchResult === 'away-win' ? 'loser' : matchResult === 'draw' ? 'draw' : ''}>
                   {match.homeTeam.name}
                 </td>
-                <td className={matchResult === 'away-win' ? 'winner' : matchResult === 'home-win' ? 'loser' : ''}>
+                <td className={matchResult === 'away-win' ? 'winner' : matchResult === 'home-win' ? 'loser' : matchResult === 'draw' ? 'draw' : ''}>
                   {match.awayTeam.name}
                 </td>
                 <td>
