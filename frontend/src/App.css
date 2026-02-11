@@ -38,3 +38,35 @@
   border-color: #5a9d6d;
   color: #ffffff;
 }
+
+.auto-refresh-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #4a7c59;
+  color: white;
+  padding: 12px 20px;
+  margin: 0;
+  border-bottom: 2px solid #5a9d6d;
+}
+
+.status-info {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.stop-auto-refresh-button {
+  background-color: #b84040;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.stop-auto-refresh-button:hover {
+  background-color: #d04545;
+}
