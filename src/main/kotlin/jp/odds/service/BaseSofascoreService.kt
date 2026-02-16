@@ -171,6 +171,34 @@ abstract class BaseSofascoreService(
         null
     }
 
+    protected suspend fun fetchEventStatistics(eventId: Long): EventStatistics? = try {
+        val response = webClient
+            .get()
+            .uri("/event/$eventId/statistics")
+            .retrieve()
+            .awaitBody<EventStatisticsResponse>()
+
+        logger.debug("Fetched statistics for event $eventId")
+        response.statistics?.firstOrNull()?.let { stats ->
+            EventStatistics(
+                homeYellowCards = stats.groups?.flatMap { it.statisticsItems ?: emptyList() }
+                    ?.find { it.key == "yellowCards" }?.home?.toIntOrNull(),
+                homeRedCards = stats.groups?.flatMap { it.statisticsItems ?: emptyList() }
+                    ?.find { it.key == "redCards" }?.home?.toIntOrNull(),
+                awayYellowCards = stats.groups?.flatMap { it.statisticsItems ?: emptyList() }
+                    ?.find { it.key == "yellowCards" }?.away?.toIntOrNull(),
+                awayRedCards = stats.groups?.flatMap { it.statisticsItems ?: emptyList() }
+                    ?.find { it.key == "redCards" }?.away?.toIntOrNull()
+            )
+        }
+    } catch (e: WebClientResponseException.NotFound) {
+        logger.debug("Statistics not found (404) for event $eventId")
+        null
+    } catch (e: Exception) {
+        logWebClientError("fetching event statistics", e, mapOf("eventId" to eventId))
+        null
+    }
+
     suspend fun getTeamEvents(teamId: Long): List<SofascoreEvent> = try {
         val response = webClient
             .get()

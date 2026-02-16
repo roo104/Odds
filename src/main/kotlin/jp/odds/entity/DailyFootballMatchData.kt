@@ -88,6 +88,18 @@ data class DailyFootballMatchData(
     @Column(name = "away_score")
     override val awayScore: Int? = null,
 
+    @Column(name = "home_yellow_cards")
+    val homeYellowCards: Int? = null,
+
+    @Column(name = "home_red_cards")
+    val homeRedCards: Int? = null,
+
+    @Column(name = "away_yellow_cards")
+    val awayYellowCards: Int? = null,
+
+    @Column(name = "away_red_cards")
+    val awayRedCards: Int? = null,
+
     @Column(name = "last_updated", nullable = true)
     val lastUpdated: Instant? = null,
 

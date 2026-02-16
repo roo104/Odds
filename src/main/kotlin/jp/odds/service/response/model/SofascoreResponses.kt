@@ -272,3 +272,36 @@ data class SofascoreEventResponse(
         val current: Int?
     )
 }
+
+data class EventStatisticsResponse(
+    val statistics: List<StatisticsPeriod>? = null
+)
+
+data class StatisticsPeriod(
+    val period: String? = null,
+    val groups: List<StatisticsGroup>? = null
+)
+
+data class StatisticsGroup(
+    val groupName: String? = null,
+    val statisticsItems: List<StatisticsItem>? = null
+)
+
+data class StatisticsItem(
+    val name: String? = null,
+    val key: String? = null,
+    val home: String? = null,
+    val away: String? = null,
+    val compareCode: Int? = null,
+    val statisticsType: String? = null,
+    val valueType: String? = null,
+    val homeValue: Double? = null,
+    val awayValue: Double? = null
+)
+
+data class EventStatistics(
+    val homeYellowCards: Int? = null,
+    val homeRedCards: Int? = null,
+    val awayYellowCards: Int? = null,
+    val awayRedCards: Int? = null
+)

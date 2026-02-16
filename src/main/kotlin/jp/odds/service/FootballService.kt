@@ -67,6 +67,8 @@ class FootballService(
             logger.info("Filtered to ${filteredEvents.size} ${if (includeAllLeagues) "total" else "top league"} matches for $dateStr")
 
             val now = Instant.now()
+            val eventStatistics = mutableMapOf<Long, jp.odds.service.response.model.EventStatistics?>()
+            
             filteredEvents.forEach { event ->
                 event.odds = fetchOddsForEvent(event.id)
                 event.voting = fetchVotingForEvent(event.id)
@@ -74,9 +76,15 @@ class FootballService(
 
                 saveOddsHistory(event.id, event.odds, now)
                 saveVotesHistory(event.id, event.voting, now)
+                
+                val isMatchFinished = event.status.type.lowercase() == "finished" ||
+                        event.status.description.lowercase() in listOf("finished", "ended", "full time")
+                if (isMatchFinished) {
+                    eventStatistics[event.id] = fetchEventStatistics(event.id)
+                }
             }
 
-            saveMatchesToDatabase(date, filteredEvents)
+            saveMatchesToDatabase(date, filteredEvents, eventStatistics)
 
             filteredEvents
         } catch (e: Exception) {
@@ -100,6 +108,10 @@ class FootballService(
         saveOddsHistory(eventId, odds, now)
         saveVotesHistory(eventId, voting, now)
 
+        val isMatchFinished = eventDetails?.status?.type?.lowercase() == "finished" ||
+                eventDetails?.status?.description?.lowercase() in listOf("finished", "ended", "full time")
+        val statistics = if (isMatchFinished) fetchEventStatistics(eventId) else null
+
         if (odds == null && voting == null && eventDetails == null) {
             logger.warn("No data fetched for match $eventId")
             throw RuntimeException("Could not fetch fresh data for match $eventId")
@@ -119,6 +131,10 @@ class FootballService(
             categoryName = refreshedCategoryName,
             homeScore = eventDetails?.homeScore?.current,
             awayScore = eventDetails?.awayScore?.current,
+            homeYellowCards = statistics?.homeYellowCards ?: existingData.homeYellowCards,
+            homeRedCards = statistics?.homeRedCards ?: existingData.homeRedCards,
+            awayYellowCards = statistics?.awayYellowCards ?: existingData.awayYellowCards,
+            awayRedCards = statistics?.awayRedCards ?: existingData.awayRedCards,
             oddsHome = odds?.home,
             oddsDraw = odds?.draw,
             oddsAway = odds?.away,
@@ -205,7 +221,11 @@ class FootballService(
         }
     }
 
-    private suspend fun saveMatchesToDatabase(matchDate: LocalDate, events: List<SofascoreEvent>) {
+    private suspend fun saveMatchesToDatabase(
+        matchDate: LocalDate, 
+        events: List<SofascoreEvent>,
+        eventStatistics: Map<Long, jp.odds.service.response.model.EventStatistics?> = emptyMap()
+    ) {
         val now = Instant.now()
 
         val existingRecords = if (events.isNotEmpty()) {
@@ -225,6 +245,7 @@ class FootballService(
                 )
                 return@mapNotNull null
             }
+            val stats = eventStatistics[event.id]
             DailyFootballMatchData(
                 id = existing?.id,
                 matchDate = existing?.matchDate ?: matchDate,
@@ -241,6 +262,10 @@ class FootballService(
                 countryName = event.tournament.category.country?.name,
                 homeScore = event.homeScore?.current,
                 awayScore = event.awayScore?.current,
+                homeYellowCards = stats?.homeYellowCards,
+                homeRedCards = stats?.homeRedCards,
+                awayYellowCards = stats?.awayYellowCards,
+                awayRedCards = stats?.awayRedCards,
                 oddsHome = event.odds?.home,
                 oddsDraw = event.odds?.draw,
                 oddsAway = event.odds?.away,
