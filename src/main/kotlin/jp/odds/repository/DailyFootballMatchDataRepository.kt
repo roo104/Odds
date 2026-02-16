@@ -50,4 +50,36 @@ interface DailyFootballMatchDataRepository : JpaRepository<DailyFootballMatchDat
         ORDER BY m.id DESC
     """)
     fun findFinishedMatchesByCountryAndTopLeague(countryName: String, isTopLeague: Boolean, pageable: org.springframework.data.domain.Pageable): List<DailyFootballMatchData>
+
+    @Query(value = """
+        SELECT tournament_name, country_name, tournament_id, season_id
+        FROM daily_football_match_data
+        WHERE is_top_league = true
+        AND country_name IS NOT NULL
+        AND EXTRACT(YEAR FROM match_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+        GROUP BY tournament_name, country_name, tournament_id, season_id
+        ORDER BY country_name
+    """, nativeQuery = true)
+    fun findTopLeaguesForCurrentYear(): List<Array<Any>>
+
+    @Query(value = """
+        SELECT DISTINCT country_name
+        FROM daily_football_match_data
+        WHERE is_top_league = true
+        AND country_name IS NOT NULL
+        AND EXTRACT(YEAR FROM match_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+        ORDER BY country_name
+    """, nativeQuery = true)
+    fun findAvailableCountriesForCurrentYear(): List<String>
+
+    @Query(value = """
+        SELECT tournament_name, country_name, tournament_id, season_id
+        FROM daily_football_match_data
+        WHERE is_top_league = true
+        AND country_name = :countryName
+        AND EXTRACT(YEAR FROM match_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+        GROUP BY tournament_name, country_name, tournament_id, season_id
+        ORDER BY tournament_name
+    """, nativeQuery = true)
+    fun findTopLeaguesByCountry(countryName: String): List<Array<Any>>
 }

@@ -10,26 +10,33 @@ import org.springframework.web.bind.annotation.*
 @CrossOrigin(origins = ["http://localhost:5173", "http://localhost:3000"])
 class StandingsController(private val footballService: FootballService) {
 
-    data class LeagueStandingsRequest(
+    data class LeagueInfo(
+        val tournamentName: String,
+        val countryName: String,
         val tournamentId: Long,
-        val seasonId: Long,
-        val leagueName: String
+        val seasonId: Long
     )
 
-    @GetMapping("/major-leagues")
-    suspend fun getMajorLeaguesStandings(): ResponseEntity<Map<String, StandingsResponse?>> {
-        // Major European Leagues with their tournament and season IDs
-        val majorLeagues = listOf(
-            LeagueStandingsRequest(17, 63217, "Premier League"),        // England
-            LeagueStandingsRequest(8, 64205, "La Liga"),                 // Spain
-            LeagueStandingsRequest(35, 64253, "Bundesliga"),             // Germany
-            LeagueStandingsRequest(23, 64159, "Serie A"),                // Italy
-            LeagueStandingsRequest(34, 64169, "Ligue 1")                 // France
-        )
+    @GetMapping("/countries")
+    suspend fun getAvailableCountries(): ResponseEntity<List<String>> {
+        val countries = footballService.getAvailableCountriesForCurrentYear()
+        return ResponseEntity.ok(countries)
+    }
 
-        val standings = majorLeagues.associate { league ->
-            league.leagueName to footballService.getTournamentStandings(league.tournamentId, league.seasonId)
-        }
+    @GetMapping("/country/{country}")
+    suspend fun getStandingsByCountry(
+        @PathVariable country: String
+    ): ResponseEntity<Map<String, StandingsResponse>> {
+        val leagues = footballService.getTopLeaguesByCountry(country)
+
+        val standings = leagues.mapNotNull { league ->
+            val standing = footballService.getTournamentStandings(league.tournamentId, league.seasonId)
+            if (standing != null) {
+                "${league.countryName} - ${league.tournamentName}" to standing
+            } else {
+                null
+            }
+        }.toMap()
 
         return ResponseEntity.ok(standings)
     }

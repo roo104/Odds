@@ -211,9 +211,15 @@ export const handballApi: MatchesApi = {
 };
 
 export const standingsApi = {
-  getMajorLeaguesStandings: async (): Promise<Record<string, StandingsResponse | null>> => {
-    const response = await fetch(`${STANDINGS_API_BASE_URL}/major-leagues`);
-    if (!response.ok) throw new Error('Failed to fetch major leagues standings');
+  getAvailableCountries: async (): Promise<string[]> => {
+    const response = await fetch(`${STANDINGS_API_BASE_URL}/countries`);
+    if (!response.ok) throw new Error('Failed to fetch available countries');
+    return response.json();
+  },
+
+  getStandingsByCountry: async (country: string): Promise<Record<string, StandingsResponse>> => {
+    const response = await fetch(`${STANDINGS_API_BASE_URL}/country/${encodeURIComponent(country)}`);
+    if (!response.ok) throw new Error('Failed to fetch standings by country');
     return response.json();
   },
 

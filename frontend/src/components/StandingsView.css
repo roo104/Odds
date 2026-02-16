@@ -37,6 +37,56 @@
   cursor: not-allowed;
 }
 
+.country-filter {
+  margin-bottom: 20px;
+  padding: 16px;
+  background-color: #202124;
+  border-radius: 8px;
+  border: 1px solid #3c4043;
+}
+
+.country-filter h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #e8eaed;
+}
+
+.country-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.country-buttons button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background-color: #292a2d;
+  color: #e8eaed;
+  border: 1px solid #3c4043;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.country-buttons button .flag {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.country-buttons button:hover {
+  background-color: #313235;
+  border-color: #5f6368;
+}
+
+.country-buttons button.active {
+  background-color: #4285f4;
+  border-color: #4285f4;
+  color: white;
+}
+
 .loading {
   text-align: center;
   padding: 40px;
@@ -160,7 +210,14 @@
 .team-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+.team-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .team-name {

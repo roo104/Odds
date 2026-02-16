@@ -280,4 +280,37 @@ class FootballService(
         val winningMatchData = extractWinningMatchData(finishedMatches)
         calculateStatisticsByLeague(winningMatchData)
     }
+
+    data class LeagueInfo(
+        val tournamentName: String,
+        val countryName: String,
+        val tournamentId: Long,
+        val seasonId: Long
+    )
+
+    suspend fun getTopLeaguesForCurrentYear(): List<LeagueInfo> = withContext(Dispatchers.IO) {
+        dailyFootballMatchDataRepository.findTopLeaguesForCurrentYear().map { row ->
+            LeagueInfo(
+                tournamentName = row[0] as String,
+                countryName = row[1] as String,
+                tournamentId = (row[2] as Number).toLong(),
+                seasonId = (row[3] as Number).toLong()
+            )
+        }
+    }
+
+    suspend fun getAvailableCountriesForCurrentYear(): List<String> = withContext(Dispatchers.IO) {
+        dailyFootballMatchDataRepository.findAvailableCountriesForCurrentYear()
+    }
+
+    suspend fun getTopLeaguesByCountry(countryName: String): List<LeagueInfo> = withContext(Dispatchers.IO) {
+        dailyFootballMatchDataRepository.findTopLeaguesByCountry(countryName).map { row ->
+            LeagueInfo(
+                tournamentName = row[0] as String,
+                countryName = row[1] as String,
+                tournamentId = (row[2] as Number).toLong(),
+                seasonId = (row[3] as Number).toLong()
+            )
+        }
+    }
 }
