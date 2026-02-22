@@ -264,6 +264,13 @@ export const betsApi = {
     return response.json();
   },
 
+  deleteBet: async (betId: number): Promise<void> => {
+    const response = await fetch(`${BETS_API_BASE_URL}/${betId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Failed to delete bet');
+  },
+
   updateOdds: async (betId: number, odds: number | null): Promise<MatchBet> => {
     const response = await fetch(`${BETS_API_BASE_URL}/${betId}/odds`, {
       method: 'PATCH',

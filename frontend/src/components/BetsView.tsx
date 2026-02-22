@@ -36,6 +36,17 @@ function BetsView() {
     }
   };
 
+  const handleDelete = async (betId: number) => {
+    if (!window.confirm('Are you sure you want to delete this bet?')) return;
+    setError(null);
+    try {
+      await betsApi.deleteBet(betId);
+      await loadBets(page);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to delete bet');
+    }
+  };
+
   const handleRefresh = async (betId: number) => {
     setRefreshingId(betId);
     setError(null);
@@ -223,6 +234,7 @@ function BetsView() {
                 <th>Odds</th>
                 <th>Final</th>
                 <th>Refresh</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -262,6 +274,19 @@ function BetsView() {
                       disabled={refreshingId === bet.id}
                     >
                       {refreshingId === bet.id ? '↻' : '⟳'}
+                    </button>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="refresh-match-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(bet.id);
+                      }}
+                      title="Delete bet"
+                    >
+                      ✕
                     </button>
                   </td>
                 </tr>

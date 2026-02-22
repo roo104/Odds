@@ -7,6 +7,7 @@ import jp.odds.dto.UpdateOddsRequest
 import jp.odds.service.BetsService
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -26,6 +27,15 @@ class BetsController(private val betsService: BetsService) {
     @PatchMapping("/{betId}/odds")
     suspend fun updateOdds(@PathVariable betId: Long, @RequestBody request: UpdateOddsRequest): MatchBetResponse =
         betsService.updateOdds(betId, request.odds)
+
+    @DeleteMapping("/{betId}")
+    suspend fun deleteBet(@PathVariable betId: Long): ResponseEntity<Void> {
+        return if (betsService.deleteBet(betId)) {
+            ResponseEntity.noContent().build()
+        } else {
+            ResponseEntity.notFound().build()
+        }
+    }
 
     @PostMapping("/{betId}/refresh")
     suspend fun refreshBetScore(@PathVariable betId: Long): MatchBetResponse = betsService.refreshBetScore(betId)

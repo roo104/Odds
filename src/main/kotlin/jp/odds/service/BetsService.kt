@@ -77,6 +77,14 @@ class BetsService(
         matchBetRepository.save(bet).toResponse()
     }
 
+    suspend fun deleteBet(betId: Long): Boolean = withContext(Dispatchers.IO) {
+        if (!matchBetRepository.existsById(betId)) {
+            return@withContext false
+        }
+        matchBetRepository.deleteById(betId)
+        true
+    }
+
     private fun calculateStatistics(bets: List<MatchBet>): BetStatistics {
         val totalBets = bets.size.toLong()
         val finishedBets = bets.count { it.finalHomeScore != null && it.finalAwayScore != null }.toLong()
