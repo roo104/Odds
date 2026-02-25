@@ -45,7 +45,9 @@ data class LeagueProfitability(
     val minVoteThreshold: Int?,
     val totalMatches: Int,
     val matchesAboveThreshold: Int,
-    val roi: Double?
+    val roi: Double?,
+    val favoriteWins: Int = 0,
+    val averageFavoriteWinOdds: Double? = null
 )
 
 data class MatchBettingDetail(

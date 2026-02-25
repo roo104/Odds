@@ -531,6 +531,10 @@ abstract class BaseSofascoreService(
         val tournamentId = matches.firstOrNull()?.tournamentId
         val tournamentName = matches.firstOrNull()?.tournamentName
 
+        val favoriteWins = matches.filter { it.favoriteWon }
+        val favoriteWinCount = favoriteWins.size
+        val avgFavoriteWinOdds = if (favoriteWins.isNotEmpty()) favoriteWins.map { it.favoriteOdds }.average() else null
+
         for (threshold in 50..99) {
             val (count, roi) = calculateThresholdROI(matches, threshold)
             if (count > 0 && roi >= 10.0) {
@@ -540,21 +544,26 @@ abstract class BaseSofascoreService(
                     minVoteThreshold = threshold,
                     totalMatches = matches.size,
                     matchesAboveThreshold = count,
-                    roi = roi
+                    roi = roi,
+                    favoriteWins = favoriteWinCount,
+                    averageFavoriteWinOdds = avgFavoriteWinOdds
                 )
             }
         }
 
-        // No threshold found - return stats at best threshold or overall
-        val bestThreshold = (50..99).maxByOrNull { calculateThresholdROI(matches, it).second }
-        val (bestCount, bestRoi) = if (bestThreshold != null) calculateThresholdROI(matches, bestThreshold) else (0 to 0.0)
+        // No threshold found - show overall ROI across all matches
+        val totalStaked = matches.size.toDouble()
+        val totalReturn = matches.sumOf { if (it.favoriteWon) it.favoriteOdds else 0.0 }
+        val overallRoi = if (totalStaked > 0) ((totalReturn - totalStaked) / totalStaked) * 100.0 else 0.0
         return LeagueProfitability(
             tournamentId = tournamentId,
             tournamentName = tournamentName,
             minVoteThreshold = null,
             totalMatches = matches.size,
-            matchesAboveThreshold = bestCount,
-            roi = bestRoi
+            matchesAboveThreshold = matches.size,
+            roi = overallRoi,
+            favoriteWins = favoriteWinCount,
+            averageFavoriteWinOdds = avgFavoriteWinOdds
         )
     }
 

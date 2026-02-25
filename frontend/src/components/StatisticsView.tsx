@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react';
-import {footballApi, handballApi, ProfitabilityResponse} from '../services/api';
+import {footballApi, handballApi, ProfitabilityResponse, standingsApi} from '../services/api';
+import {getCountryFlag} from '../utils/countryFlags';
 import './StatisticsView.css';
 
 interface LeagueStatistics {
@@ -27,11 +28,40 @@ function StatisticsView() {
   const [profitability, setProfitability] = useState<ProfitabilityResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [, setAvailableCountries] = useState<string[]>([]);
+  const [availableCountries, setAvailableCountries] = useState<string[]>([]);
+  const [loadingCountries, setLoadingCountries] = useState(false);
 
   useEffect(() => {
-    loadStatistics();
+    loadAvailableCountries();
+  }, []);
+
+  useEffect(() => {
+    if (selectedCountry) {
+      loadStatistics();
+    }
   }, [sport, selectedCountry, topLeaguesOnly]);
+
+  const loadAvailableCountries = async () => {
+    setLoadingCountries(true);
+    try {
+      const countries = await standingsApi.getAvailableCountries();
+      setAvailableCountries(countries);
+    } catch (err) {
+      console.error('Failed to load available countries:', err);
+    } finally {
+      setLoadingCountries(false);
+    }
+  };
+
+  const selectCountry = (country: string) => {
+    if (selectedCountry === country) {
+      setSelectedCountry('');
+      setStatistics(null);
+      setProfitability(null);
+      return;
+    }
+    setSelectedCountry(country);
+  };
 
   const loadStatistics = async () => {
     setLoading(true);
@@ -44,18 +74,6 @@ function StatisticsView() {
           sport === 'football' ? topLeaguesOnly : undefined
         );
         setStatistics(data);
-
-        // Extract unique countries from league data
-        const countries = new Set<string>();
-        data.byLeague.forEach(league => {
-          // Try to extract country from tournament name (this is a heuristic)
-          // In a real scenario, you might want to fetch available countries from backend
-          const parts = league.tournamentName.split(' - ');
-          if (parts.length > 1) {
-            countries.add(parts[0]);
-          }
-        });
-        setAvailableCountries(Array.from(countries).sort());
       }
 
       if (api.getProfitableThresholds) {
@@ -85,6 +103,8 @@ function StatisticsView() {
               onClick={() => {
                 setSport('football');
                 setSelectedCountry('');
+                setStatistics(null);
+                setProfitability(null);
               }}
             >
               Football
@@ -95,49 +115,15 @@ function StatisticsView() {
               onClick={() => {
                 setSport('handball');
                 setSelectedCountry('');
+                setStatistics(null);
+                setProfitability(null);
               }}
             >
               Handball
             </button>
           </div>
 
-          <div className="country-filter">
-            <label htmlFor="country-select">Filter by Country:</label>
-            <select
-              id="country-select"
-              value={selectedCountry}
-              onChange={(e) => setSelectedCountry(e.target.value)}
-              className="country-select"
-            >
-              <option value="">All Countries</option>
-              <option value="Argentina">Argentina</option>
-              <option value="Austria">Austria</option>
-              <option value="Belgium">Belgium</option>
-              <option value="Brazil">Brazil</option>
-              <option value="Croatia">Croatia</option>
-              <option value="Czech Republic">Czech Republic</option>
-              <option value="Denmark">Denmark</option>
-              <option value="England">England</option>
-              <option value="France">France</option>
-              <option value="Germany">Germany</option>
-              <option value="Greece">Greece</option>
-              <option value="Italy">Italy</option>
-              <option value="Mexico">Mexico</option>
-              <option value="Netherlands">Netherlands</option>
-              <option value="Norway">Norway</option>
-              <option value="Poland">Poland</option>
-              <option value="Portugal">Portugal</option>
-              <option value="Scotland">Scotland</option>
-              <option value="Serbia">Serbia</option>
-              <option value="Spain">Spain</option>
-              <option value="Sweden">Sweden</option>
-              <option value="Switzerland">Switzerland</option>
-              <option value="Turkey">Turkey</option>
-              <option value="USA">USA</option>
-            </select>
-          </div>
-
-          {sport === 'football' && (
+          {selectedCountry && sport === 'football' && (
             <div className="top-leagues-filter">
               <label>
                 <input
@@ -152,9 +138,36 @@ function StatisticsView() {
         </div>
       </div>
 
+      {loadingCountries ? (
+        <div className="loading">Loading countries...</div>
+      ) : availableCountries.length > 0 ? (
+        <div className="statistics-country-filter">
+          <h3>Select a Country:</h3>
+          <div className="statistics-country-buttons">
+            {availableCountries.map((country) => (
+              <button
+                key={country}
+                className={selectedCountry === country ? 'active' : ''}
+                onClick={() => selectCountry(country)}
+                disabled={loading}
+              >
+                <span className="flag">{getCountryFlag(country)}</span>
+                {country}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="no-data">No countries available</div>
+      )}
+
       <div className="statistics-content">
         {loading && <div className="loading">Loading statistics...</div>}
         {error && <div className="error">{error}</div>}
+
+        {!loading && !error && !selectedCountry && (
+          <div className="no-data">Please select a country to view statistics</div>
+        )}
 
         {!loading && !error && statistics && (
           <>
@@ -235,6 +248,21 @@ function StatisticsView() {
                         <span className="league-stat-value">{profitability.overall.totalMatches}</span>
                       </div>
                       <div className="league-stat">
+                        <span className="league-stat-label">Favorite Wins:</span>
+                        <span className="league-stat-value">
+                          {profitability.overall.favoriteWins} / {profitability.overall.totalMatches}
+                          {' '}({profitability.overall.totalMatches > 0 ? ((profitability.overall.favoriteWins / profitability.overall.totalMatches) * 100).toFixed(1) : '0'}%)
+                        </span>
+                      </div>
+                      <div className="league-stat">
+                        <span className="league-stat-label">Avg Odds (Fav Wins):</span>
+                        <span className="league-stat-value">
+                          {profitability.overall.averageFavoriteWinOdds != null
+                            ? profitability.overall.averageFavoriteWinOdds.toFixed(2)
+                            : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="league-stat">
                         <span className="league-stat-label">Above Threshold:</span>
                         <span className="league-stat-value">{profitability.overall.matchesAboveThreshold}</span>
                       </div>
@@ -261,6 +289,21 @@ function StatisticsView() {
                         <div className="league-stat">
                           <span className="league-stat-label">Matches:</span>
                           <span className="league-stat-value">{league.totalMatches}</span>
+                        </div>
+                        <div className="league-stat">
+                          <span className="league-stat-label">Favorite Wins:</span>
+                          <span className="league-stat-value">
+                            {league.favoriteWins} / {league.totalMatches}
+                            {' '}({league.totalMatches > 0 ? ((league.favoriteWins / league.totalMatches) * 100).toFixed(1) : '0'}%)
+                          </span>
+                        </div>
+                        <div className="league-stat">
+                          <span className="league-stat-label">Avg Odds (Fav Wins):</span>
+                          <span className="league-stat-value">
+                            {league.averageFavoriteWinOdds != null
+                              ? league.averageFavoriteWinOdds.toFixed(2)
+                              : 'N/A'}
+                          </span>
                         </div>
                         <div className="league-stat">
                           <span className="league-stat-label">Above Threshold:</span>

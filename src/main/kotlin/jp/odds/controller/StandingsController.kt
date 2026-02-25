@@ -10,23 +10,11 @@ import org.springframework.web.bind.annotation.*
 @CrossOrigin(origins = ["http://localhost:5173", "http://localhost:3000"])
 class StandingsController(private val footballService: FootballService) {
 
-    data class LeagueInfo(
-        val tournamentName: String,
-        val countryName: String,
-        val tournamentId: Long,
-        val seasonId: Long
-    )
-
     @GetMapping("/countries")
-    suspend fun getAvailableCountries(): ResponseEntity<List<String>> {
-        val countries = footballService.getAvailableCountriesForCurrentYear()
-        return ResponseEntity.ok(countries)
-    }
+    suspend fun getAvailableCountries(): ResponseEntity<List<String>> = ResponseEntity.ok(footballService.getAvailableCountriesForCurrentYear())
 
     @GetMapping("/country/{country}")
-    suspend fun getStandingsByCountry(
-        @PathVariable country: String
-    ): ResponseEntity<Map<String, StandingsResponse>> {
+    suspend fun getStandingsByCountry(        @PathVariable country: String    ): ResponseEntity<Map<String, StandingsResponse>> {
         val leagues = footballService.getTopLeaguesByCountry(country)
 
         val standings = leagues.mapNotNull { league ->

@@ -22,36 +22,6 @@
   flex-wrap: wrap;
 }
 
-.country-filter {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.country-filter label {
-  font-size: 14px;
-  color: #b0b0b0;
-}
-
-.country-select {
-  background-color: #2d2d2d;
-  color: #e0e0e0;
-  border: 1px solid #3a3a3a;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 14px;
-  cursor: pointer;
-  min-width: 180px;
-}
-
-.country-select:hover {
-  background-color: #3a3a3a;
-}
-
-.country-select:focus {
-  outline: none;
-  border-color: #4a7c59;
-}
 
 .top-leagues-filter {
   display: flex;
@@ -78,6 +48,68 @@
 .filter-badge {
   color: #4a9eff;
   font-size: 18px;
+}
+
+.statistics-country-filter {
+  margin-bottom: 20px;
+  padding: 16px;
+  background-color: #202124;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+.statistics-country-filter h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #e8eaed;
+}
+
+.statistics-country-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.statistics-country-buttons button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background-color: #292a2d;
+  color: #e8eaed;
+  border: 1px solid #3c4043;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.statistics-country-buttons button .flag {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.statistics-country-buttons button:hover {
+  background-color: #313235;
+  border-color: #5f6368;
+}
+
+.statistics-country-buttons button.active {
+  background-color: #4285f4;
+  border-color: #4285f4;
+  color: white;
+}
+
+.statistics-country-buttons button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px;
+  color: #9aa0a6;
+  font-size: 14px;
 }
 
 .statistics-content {

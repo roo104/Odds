@@ -34,6 +34,8 @@ export interface LeagueProfitability {
   totalMatches: number;
   matchesAboveThreshold: number;
   roi: number | null;
+  favoriteWins: number;
+  averageFavoriteWinOdds: number | null;
 }
 
 export interface MatchBettingDetail {
