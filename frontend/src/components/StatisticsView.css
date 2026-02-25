@@ -189,3 +189,90 @@
   font-weight: 600;
   color: #4a9eff;
 }
+
+.league-stat-value.profitable {
+  color: #4caf50;
+}
+
+.section-description {
+  font-size: 14px;
+  color: #aaa;
+  margin: 0 0 16px 0;
+}
+
+.betting-matches-section {
+  margin-top: 24px;
+}
+
+.betting-matches-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.betting-matches-table-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+.betting-matches-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #1e1e1e;
+}
+
+.betting-matches-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.betting-matches-table th {
+  background: #3a3a3a;
+  color: #e0e0e0;
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 2px solid #555;
+}
+
+.betting-matches-table td {
+  padding: 6px 10px;
+  color: #e0e0e0;
+  border-bottom: 1px solid #2a2a2a;
+  white-space: nowrap;
+}
+
+.betting-matches-table tbody tr:hover {
+  background: #2a2a2a;
+}
+
+.betting-matches-table td.winner {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.betting-matches-table td.loser {
+  color: #f44336;
+}
+
+.betting-matches-table td.profitable {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.betting-matches-table td.loss {
+  color: #f44336;
+}
+
+.betting-matches-table td.draw-result {
+  color: #ffc107;
+}
+
+.betting-matches-table tr.draw-row {
+  opacity: 0.7;
+}

@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {footballApi, handballApi} from '../services/api';
+import {footballApi, handballApi, ProfitabilityResponse} from '../services/api';
 import './StatisticsView.css';
 
 interface LeagueStatistics {
@@ -24,6 +24,7 @@ function StatisticsView() {
   const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [topLeaguesOnly, setTopLeaguesOnly] = useState<boolean>(false);
   const [statistics, setStatistics] = useState<WinningMatchStatisticsByLeague | null>(null);
+  const [profitability, setProfitability] = useState<ProfitabilityResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, setAvailableCountries] = useState<string[]>([]);
@@ -55,6 +56,14 @@ function StatisticsView() {
           }
         });
         setAvailableCountries(Array.from(countries).sort());
+      }
+
+      if (api.getProfitableThresholds) {
+        const profitData = await api.getProfitableThresholds(
+          selectedCountry || undefined,
+          sport === 'football' ? topLeaguesOnly : undefined
+        );
+        setProfitability(profitData);
       }
     } catch (err) {
       console.error('Failed to load statistics:', err);
@@ -202,6 +211,124 @@ function StatisticsView() {
                 ))}
               </div>
             </div>
+
+            {profitability && (
+              <div className="league-stats">
+                <h2>Profitable Vote Thresholds</h2>
+                <p className="section-description">
+                  Minimum crowd-favorite vote % needed to achieve 10% ROI when betting on the favorite.
+                </p>
+                {profitability.overall && (
+                  <div className="overall-stats" style={{marginBottom: '1rem'}}>
+                    <h3>Overall</h3>
+                    <div className="league-stats-grid">
+                      <div className="league-stat">
+                        <span className="league-stat-label">Min Threshold:</span>
+                        <span className="league-stat-value">
+                          {profitability.overall.minVoteThreshold != null
+                            ? `${profitability.overall.minVoteThreshold}%`
+                            : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="league-stat">
+                        <span className="league-stat-label">Matches:</span>
+                        <span className="league-stat-value">{profitability.overall.totalMatches}</span>
+                      </div>
+                      <div className="league-stat">
+                        <span className="league-stat-label">Above Threshold:</span>
+                        <span className="league-stat-value">{profitability.overall.matchesAboveThreshold}</span>
+                      </div>
+                      <div className="league-stat">
+                        <span className="league-stat-label">ROI:</span>
+                        <span className={`league-stat-value ${profitability.overall.roi != null && profitability.overall.roi >= 10 ? 'profitable' : ''}`}>
+                          {profitability.overall.roi != null ? `${profitability.overall.roi.toFixed(1)}%` : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className="league-list">
+                  {profitability.byLeague.map((league) => (
+                    <div key={league.tournamentId} className="league-card">
+                      <h3 className="league-name">{league.tournamentName}</h3>
+                      <div className="league-stats-grid">
+                        <div className="league-stat">
+                          <span className="league-stat-label">Min Threshold:</span>
+                          <span className="league-stat-value">
+                            {league.minVoteThreshold != null ? `${league.minVoteThreshold}%` : 'N/A'}
+                          </span>
+                        </div>
+                        <div className="league-stat">
+                          <span className="league-stat-label">Matches:</span>
+                          <span className="league-stat-value">{league.totalMatches}</span>
+                        </div>
+                        <div className="league-stat">
+                          <span className="league-stat-label">Above Threshold:</span>
+                          <span className="league-stat-value">{league.matchesAboveThreshold}</span>
+                        </div>
+                        <div className="league-stat">
+                          <span className="league-stat-label">ROI:</span>
+                          <span className={`league-stat-value ${league.roi != null && league.roi >= 10 ? 'profitable' : ''}`}>
+                            {league.roi != null ? `${league.roi.toFixed(1)}%` : 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {profitability.matches && profitability.matches.length > 0 && (
+                  <div className="betting-matches-section">
+                    <h3>Matches Used in Calculation</h3>
+                    <div className="betting-matches-table-container">
+                      <table className="betting-matches-table">
+                        <thead>
+                          <tr>
+                            <th>Home</th>
+                            <th>Away</th>
+                            <th>Score</th>
+                            <th>H Odds</th>
+                            <th>D Odds</th>
+                            <th>A Odds</th>
+                            <th>H Vote</th>
+                            <th>D Vote</th>
+                            <th>A Vote</th>
+                            <th>Fav Won</th>
+                            <th>League</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {profitability.matches.map((match, index) => {
+                            const isDraw = match.homeScore === match.awayScore;
+                            const homeIsWinner = match.homeScore > match.awayScore;
+                            const awayIsWinner = match.awayScore > match.homeScore;
+                            const homeClass = isDraw ? 'draw-result' : homeIsWinner ? 'winner' : 'loser';
+                            const awayClass = isDraw ? 'draw-result' : awayIsWinner ? 'winner' : 'loser';
+                            return (
+                              <tr key={index} className={isDraw ? 'draw-row' : ''}>
+                                <td className={homeClass}>{match.homeTeamName}</td>
+                                <td className={awayClass}>{match.awayTeamName}</td>
+                                <td>{match.homeScore} - {match.awayScore}</td>
+                                <td>{match.oddsHome?.toFixed(2) ?? '-'}</td>
+                                <td>{match.oddsDraw?.toFixed(2) ?? '-'}</td>
+                                <td>{match.oddsAway?.toFixed(2) ?? '-'}</td>
+                                <td>{match.votingHome != null ? `${match.votingHome}%` : '-'}</td>
+                                <td>{match.votingDraw != null ? `${match.votingDraw}%` : '-'}</td>
+                                <td>{match.votingAway != null ? `${match.votingAway}%` : '-'}</td>
+                                <td className={match.favoriteWon === null ? '' : match.favoriteWon ? 'profitable' : 'loss'}>
+                                  {match.favoriteWon === null ? '-' : match.favoriteWon ? 'Yes' : 'No'}
+                                </td>
+                                <td>{match.tournamentName}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>

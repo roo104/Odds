@@ -80,4 +80,10 @@ class FootballMatchesController(private val footballService: FootballService) {
         @RequestParam(required = false) country: String?,
         @RequestParam(required = false, defaultValue = "false") topLeaguesOnly: Boolean
     ): WinningMatchStatisticsByLeague = footballService.getWinningMatchStatisticsByLeague(country, topLeaguesOnly)
+
+    @GetMapping("/statistics/profitable-thresholds")
+    suspend fun getProfitableThresholds(
+        @RequestParam(required = false) country: String?,
+        @RequestParam(required = false, defaultValue = "false") topLeaguesOnly: Boolean
+    ): ProfitabilityResponse = footballService.getProfitableThresholds(country, topLeaguesOnly)
 }

@@ -27,6 +27,38 @@ interface WinningMatchStatisticsByLeague {
   byLeague: LeagueStatistics[];
 }
 
+export interface LeagueProfitability {
+  tournamentId: number | null;
+  tournamentName: string | null;
+  minVoteThreshold: number | null;
+  totalMatches: number;
+  matchesAboveThreshold: number;
+  roi: number | null;
+}
+
+export interface MatchBettingDetail {
+  homeTeamName: string;
+  awayTeamName: string;
+  homeScore: number;
+  awayScore: number;
+  oddsHome: number | null;
+  oddsDraw: number | null;
+  oddsAway: number | null;
+  votingHome: number | null;
+  votingDraw: number | null;
+  votingAway: number | null;
+  favoriteVote: number | null;
+  favoriteOdds: number | null;
+  favoriteWon: boolean | null;
+  tournamentName: string;
+}
+
+export interface ProfitabilityResponse {
+  overall: LeagueProfitability | null;
+  byLeague: LeagueProfitability[];
+  matches: MatchBettingDetail[] | null;
+}
+
 interface MatchesApi {
   getTodayMatches: () => Promise<SofascoreEvent[]>;
   getMatchesByDate: (date: string, includeAllLeagues?: boolean) => Promise<SofascoreEvent[]>;
@@ -37,6 +69,7 @@ interface MatchesApi {
   getMatchHistory: (eventId: number) => Promise<MatchHistoryResponse>;
   getWinningMatchStatistics?: () => Promise<WinningMatchStatistics>;
   getWinningMatchStatisticsByLeague?: (country?: string, topLeaguesOnly?: boolean) => Promise<WinningMatchStatisticsByLeague>;
+  getProfitableThresholds?: (country?: string, topLeaguesOnly?: boolean) => Promise<ProfitabilityResponse>;
 }
 
 export default MatchesApi
@@ -131,6 +164,16 @@ export const footballApi: MatchesApi = {
     if (!response.ok) throw new Error('Failed to fetch winning match statistics by league');
     return response.json();
   },
+
+  getProfitableThresholds: async (country?: string, topLeaguesOnly?: boolean): Promise<ProfitabilityResponse> => {
+    const params = new URLSearchParams();
+    if (country) params.append('country', country);
+    if (topLeaguesOnly) params.append('topLeaguesOnly', 'true');
+    const url = `${FOOTBALL_API_BASE_URL}/statistics/profitable-thresholds${params.toString() ? '?' + params.toString() : ''}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch profitable thresholds');
+    return response.json();
+  },
 };
 
 export const handballApi: MatchesApi = {
@@ -206,6 +249,15 @@ export const handballApi: MatchesApi = {
     const url = `${HANDBALL_API_BASE_URL}/statistics/winning-matches-by-league${params.toString() ? '?' + params.toString() : ''}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch winning match statistics by league');
+    return response.json();
+  },
+
+  getProfitableThresholds: async (country?: string): Promise<ProfitabilityResponse> => {
+    const params = new URLSearchParams();
+    if (country) params.append('country', country);
+    const url = `${HANDBALL_API_BASE_URL}/statistics/profitable-thresholds${params.toString() ? '?' + params.toString() : ''}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch profitable thresholds');
     return response.json();
   },
 };

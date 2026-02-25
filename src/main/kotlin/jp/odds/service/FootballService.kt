@@ -1,5 +1,6 @@
 package jp.odds.service
 
+import jp.odds.dto.ProfitabilityResponse
 import jp.odds.dto.WinningMatchStatistics
 import jp.odds.dto.WinningMatchStatisticsByLeague
 import jp.odds.entity.DailyFootballMatchData
@@ -304,6 +305,19 @@ class FootballService(
 
         val winningMatchData = extractWinningMatchData(finishedMatches)
         calculateStatisticsByLeague(winningMatchData)
+    }
+
+    suspend fun getProfitableThresholds(countryName: String? = null, topLeaguesOnly: Boolean = false): ProfitabilityResponse = withContext(Dispatchers.IO) {
+        val pageable = PageRequest.of(0, 1000)
+        val finishedMatches = when {
+            countryName != null && topLeaguesOnly -> dailyFootballMatchDataRepository.findFinishedMatchesByCountryAndTopLeague(countryName, true, pageable)
+            countryName != null -> dailyFootballMatchDataRepository.findFinishedMatchesByCountry(countryName, pageable)
+            topLeaguesOnly -> dailyFootballMatchDataRepository.findFinishedMatchesByTopLeague(true, pageable)
+            else -> dailyFootballMatchDataRepository.findFinishedMatches(pageable)
+        }
+
+        val bettingData = extractBettingData(finishedMatches)
+        calculateProfitableThresholds(bettingData, if (countryName != null) finishedMatches else null)
     }
 
     data class LeagueInfo(

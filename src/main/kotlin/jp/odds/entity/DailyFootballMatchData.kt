@@ -32,13 +32,13 @@ data class DailyFootballMatchData(
     val homeTeamId: Long = 0,
 
     @Column(name = "home_team_name", nullable = false)
-    val homeTeamName: String = "",
+    override val homeTeamName: String = "",
 
     @Column(name = "away_team_id", nullable = false)
     val awayTeamId: Long = 0,
 
     @Column(name = "away_team_name", nullable = false)
-    val awayTeamName: String = "",
+    override val awayTeamName: String = "",
 
     @Column(name = "tournament_id", nullable = false)
     override val tournamentId: Long = 0,

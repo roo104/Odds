@@ -1,5 +1,6 @@
 package jp.odds.service
 
+import jp.odds.dto.ProfitabilityResponse
 import jp.odds.dto.WinningMatchStatistics
 import jp.odds.dto.WinningMatchStatisticsByLeague
 import jp.odds.entity.DailyHandballMatchData
@@ -251,6 +252,18 @@ class HandballService(
         val finishedMatches = dailyHandballMatchDataRepository.findFinishedMatches(pageable)
         val winningMatchData = extractWinningMatchData(finishedMatches)
         calculateWinningStatistics(winningMatchData)
+    }
+
+    suspend fun getProfitableThresholds(countryName: String? = null): ProfitabilityResponse = withContext(Dispatchers.IO) {
+        val pageable = PageRequest.of(0, 1000)
+        val finishedMatches = if (countryName != null) {
+            dailyHandballMatchDataRepository.findFinishedMatchesByCountry(countryName, pageable)
+        } else {
+            dailyHandballMatchDataRepository.findFinishedMatches(pageable)
+        }
+
+        val bettingData = extractBettingData(finishedMatches)
+        calculateProfitableThresholds(bettingData, if (countryName != null) finishedMatches else null)
     }
 
     suspend fun getWinningMatchStatisticsByLeague(countryName: String? = null): WinningMatchStatisticsByLeague = withContext(Dispatchers.IO) {

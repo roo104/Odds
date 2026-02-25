@@ -11,4 +11,6 @@ interface MatchDataWithResult {
     val oddsAway: String?
     val tournamentId: Long
     val tournamentName: String
+    val homeTeamName: String
+    val awayTeamName: String
 }

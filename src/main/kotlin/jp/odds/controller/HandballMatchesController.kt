@@ -77,4 +77,9 @@ class HandballMatchesController(private val handballService: HandballService) {
     suspend fun getWinningMatchStatisticsByLeague(
         @RequestParam(required = false) country: String?
     ): WinningMatchStatisticsByLeague = handballService.getWinningMatchStatisticsByLeague(country)
+
+    @GetMapping("/statistics/profitable-thresholds")
+    suspend fun getProfitableThresholds(
+        @RequestParam(required = false) country: String?
+    ): ProfitabilityResponse = handballService.getProfitableThresholds(country)
 }

@@ -38,3 +38,35 @@ data class WinningMatchStatisticsByLeague(
     val overall: WinningMatchStatistics,
     val byLeague: List<LeagueStatistics>
 )
+
+data class LeagueProfitability(
+    val tournamentId: Long?,
+    val tournamentName: String?,
+    val minVoteThreshold: Int?,
+    val totalMatches: Int,
+    val matchesAboveThreshold: Int,
+    val roi: Double?
+)
+
+data class MatchBettingDetail(
+    val homeTeamName: String,
+    val awayTeamName: String,
+    val homeScore: Int,
+    val awayScore: Int,
+    val oddsHome: Double?,
+    val oddsDraw: Double?,
+    val oddsAway: Double?,
+    val votingHome: Int?,
+    val votingDraw: Int?,
+    val votingAway: Int?,
+    val favoriteVote: Int?,
+    val favoriteOdds: Double?,
+    val favoriteWon: Boolean?,
+    val tournamentName: String
+)
+
+data class ProfitabilityResponse(
+    val overall: LeagueProfitability?,
+    val byLeague: List<LeagueProfitability>,
+    val matches: List<MatchBettingDetail>? = null
+)

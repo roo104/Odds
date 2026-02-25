@@ -2,9 +2,8 @@ package jp.odds.service
 
 import io.netty.channel.ChannelOption
 import io.netty.handler.timeout.ReadTimeoutHandler
-import jp.odds.dto.LeagueStatistics
-import jp.odds.dto.WinningMatchStatistics
-import jp.odds.dto.WinningMatchStatisticsByLeague
+import jp.odds.dto.*
+import jp.odds.model.MatchBettingData
 import jp.odds.model.MatchDataWithResult
 import jp.odds.model.MatchWinningData
 import jp.odds.repository.MatchOddsHistoryRepository
@@ -436,10 +435,7 @@ abstract class BaseSofascoreService(
                     winningVote = match.votingAway
                     winningOdds = match.oddsAway
                 }
-                else -> {
-                    winningVote = match.votingDraw
-                    winningOdds = match.oddsDraw
-                }
+                else -> return@mapNotNull null // Skip draws
             }
 
             if (winningVote != null && winningOdds != null) {
@@ -468,6 +464,174 @@ abstract class BaseSofascoreService(
             averageVote = winningMatchData.map { it.vote }.average(),
             averageOdds = winningMatchData.map { it.odds }.average(),
             totalMatches = winningMatchData.size
+        )
+    }
+
+    protected fun <T : MatchDataWithResult> extractBettingData(matches: List<T>): List<MatchBettingData> {
+        return matches.mapNotNull { match ->
+            val homeScore = match.homeScore ?: return@mapNotNull null
+            val awayScore = match.awayScore ?: return@mapNotNull null
+
+            val homeVote = match.votingHome ?: return@mapNotNull null
+            val drawVote = match.votingDraw ?: 0
+            val awayVote = match.votingAway ?: return@mapNotNull null
+
+            // Favorite is the outcome (home/draw/away) with the most votes
+            val maxVote = maxOf(homeVote, drawVote, awayVote)
+            val favoriteOutcome = when (maxVote) {
+                homeVote -> "home"
+                drawVote -> "draw"
+                else -> "away"
+            }
+            val favoriteVote = maxVote
+            val favoriteOddsStr = when (favoriteOutcome) {
+                "home" -> match.oddsHome
+                "draw" -> match.oddsDraw
+                else -> match.oddsAway
+            }
+            val favoriteOdds = favoriteOddsStr?.let { parseOdds(it) } ?: return@mapNotNull null
+            if (favoriteOdds <= 0.0) return@mapNotNull null
+
+            val favoriteWon = when (favoriteOutcome) {
+                "home" -> homeScore > awayScore
+                "draw" -> homeScore == awayScore
+                else -> awayScore > homeScore
+            }
+
+            MatchBettingData(
+                tournamentId = match.tournamentId,
+                tournamentName = match.tournamentName,
+                homeTeamName = match.homeTeamName,
+                awayTeamName = match.awayTeamName,
+                homeScore = homeScore,
+                awayScore = awayScore,
+                oddsHome = match.oddsHome,
+                oddsDraw = match.oddsDraw,
+                oddsAway = match.oddsAway,
+                votingHome = match.votingHome,
+                votingDraw = match.votingDraw,
+                votingAway = match.votingAway,
+                favoriteVote = favoriteVote,
+                favoriteOdds = favoriteOdds,
+                favoriteWon = favoriteWon
+            )
+        }
+    }
+
+    private fun calculateThresholdROI(matches: List<MatchBettingData>, threshold: Int): Pair<Int, Double> {
+        val aboveThreshold = matches.filter { it.favoriteVote >= threshold }
+        if (aboveThreshold.isEmpty()) return 0 to 0.0
+        val totalStaked = aboveThreshold.size.toDouble()
+        val totalReturn = aboveThreshold.sumOf { if (it.favoriteWon) it.favoriteOdds else 0.0 }
+        val roi = ((totalReturn - totalStaked) / totalStaked) * 100.0
+        return aboveThreshold.size to roi
+    }
+
+    private fun findProfitableThreshold(matches: List<MatchBettingData>): LeagueProfitability {
+        val tournamentId = matches.firstOrNull()?.tournamentId
+        val tournamentName = matches.firstOrNull()?.tournamentName
+
+        for (threshold in 50..99) {
+            val (count, roi) = calculateThresholdROI(matches, threshold)
+            if (count > 0 && roi >= 10.0) {
+                return LeagueProfitability(
+                    tournamentId = tournamentId,
+                    tournamentName = tournamentName,
+                    minVoteThreshold = threshold,
+                    totalMatches = matches.size,
+                    matchesAboveThreshold = count,
+                    roi = roi
+                )
+            }
+        }
+
+        // No threshold found - return stats at best threshold or overall
+        val bestThreshold = (50..99).maxByOrNull { calculateThresholdROI(matches, it).second }
+        val (bestCount, bestRoi) = if (bestThreshold != null) calculateThresholdROI(matches, bestThreshold) else (0 to 0.0)
+        return LeagueProfitability(
+            tournamentId = tournamentId,
+            tournamentName = tournamentName,
+            minVoteThreshold = null,
+            totalMatches = matches.size,
+            matchesAboveThreshold = bestCount,
+            roi = bestRoi
+        )
+    }
+
+    protected fun <T : MatchDataWithResult> calculateProfitableThresholds(
+        bettingData: List<MatchBettingData>,
+        allFinishedMatches: List<T>? = null
+    ): ProfitabilityResponse {
+        if (bettingData.isEmpty() && allFinishedMatches.isNullOrEmpty()) {
+            return ProfitabilityResponse(overall = null, byLeague = emptyList())
+        }
+
+        val overall = if (bettingData.isNotEmpty()) findProfitableThreshold(bettingData) else null
+
+        val byLeague = bettingData
+            .groupBy { it.tournamentId to it.tournamentName }
+            .map { (_, matches) -> findProfitableThreshold(matches) }
+            .sortedByDescending { it.totalMatches }
+
+        val matchDetails = allFinishedMatches?.mapNotNull { match ->
+            val homeScore = match.homeScore ?: return@mapNotNull null
+            val awayScore = match.awayScore ?: return@mapNotNull null
+
+            val homeVote = match.votingHome
+            val drawVote = match.votingDraw ?: 0
+            val awayVote = match.votingAway
+
+            val favoriteVote: Int?
+            val favoriteOdds: Double?
+            val favoriteWon: Boolean?
+
+            if (homeVote == null || awayVote == null) {
+                favoriteVote = null
+                favoriteOdds = null
+                favoriteWon = null
+            } else {
+                val maxVote = maxOf(homeVote, drawVote, awayVote)
+                val favoriteOutcome = when (maxVote) {
+                    homeVote -> "home"
+                    drawVote -> "draw"
+                    else -> "away"
+                }
+                favoriteVote = maxVote
+                val oddsStr = when (favoriteOutcome) {
+                    "home" -> match.oddsHome
+                    "draw" -> match.oddsDraw
+                    else -> match.oddsAway
+                }
+                favoriteOdds = oddsStr?.let { parseOdds(it) }?.takeIf { it > 0.0 }
+                favoriteWon = when (favoriteOutcome) {
+                    "home" -> homeScore > awayScore
+                    "draw" -> homeScore == awayScore
+                    else -> awayScore > homeScore
+                }
+            }
+
+            MatchBettingDetail(
+                homeTeamName = match.homeTeamName,
+                awayTeamName = match.awayTeamName,
+                homeScore = homeScore,
+                awayScore = awayScore,
+                oddsHome = match.oddsHome?.let { parseOdds(it) }?.takeIf { it > 0.0 },
+                oddsDraw = match.oddsDraw?.let { parseOdds(it) }?.takeIf { it > 0.0 },
+                oddsAway = match.oddsAway?.let { parseOdds(it) }?.takeIf { it > 0.0 },
+                votingHome = match.votingHome,
+                votingDraw = match.votingDraw,
+                votingAway = match.votingAway,
+                favoriteVote = favoriteVote,
+                favoriteOdds = favoriteOdds,
+                favoriteWon = favoriteWon,
+                tournamentName = match.tournamentName
+            )
+        }
+
+        return ProfitabilityResponse(
+            overall = overall?.copy(tournamentId = null, tournamentName = null),
+            byLeague = byLeague,
+            matches = matchDetails
         )
     }
 
