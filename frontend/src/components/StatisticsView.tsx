@@ -3,21 +3,12 @@ import {footballApi, handballApi, ProfitabilityResponse, standingsApi} from '../
 import {getCountryFlag} from '../utils/countryFlags';
 import './StatisticsView.css';
 
-interface LeagueStatistics {
-  tournamentId: number;
-  tournamentName: string;
-  averageVote: number;
-  averageOdds: number;
-  totalMatches: number;
-}
-
 interface WinningMatchStatisticsByLeague {
   overall: {
     averageVote: number;
     averageOdds: number;
     totalMatches: number;
   };
-  byLeague: LeagueStatistics[];
 }
 
 function StatisticsView() {
@@ -193,35 +184,6 @@ function StatisticsView() {
                   <span className="stat-label">Total Matches</span>
                   <span className="stat-value">{statistics.overall.totalMatches}</span>
                 </div>
-              </div>
-            </div>
-
-            <div className="league-stats">
-              <h2>Statistics by League</h2>
-              <div className="league-list">
-                {statistics.byLeague.map((league) => (
-                  <div key={league.tournamentId} className="league-card">
-                    <h3 className="league-name">{league.tournamentName}</h3>
-                    <div className="league-stats-grid">
-                      <div className="league-stat">
-                        <span className="league-stat-label">Avg Vote:</span>
-                        <span className="league-stat-value">{league.averageVote.toFixed(1)}%</span>
-                      </div>
-                      <div className="league-stat">
-                        <span className="league-stat-label">Avg Odds:</span>
-                        <span className="league-stat-value">{league.averageOdds.toFixed(2)}</span>
-                      </div>
-                      <div className="league-stat">
-                        <span className="league-stat-label">Break-even %:</span>
-                        <span className="league-stat-value">{((1 / league.averageOdds) * 100).toFixed(1)}%</span>
-                      </div>
-                      <div className="league-stat">
-                        <span className="league-stat-label">Matches:</span>
-                        <span className="league-stat-value">{league.totalMatches}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
 
