@@ -20,7 +20,7 @@ interface WinningMatchStatisticsByLeague {
 }
 
 function StatisticsView() {
-  const [sport, setSport] = useState<'football' | 'handball'>('handball');
+  const [sport, setSport] = useState<'football' | 'handball'>('football');
   const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [topLeaguesOnly, setTopLeaguesOnly] = useState<boolean>(false);
   const [statistics, setStatistics] = useState<WinningMatchStatisticsByLeague | null>(null);
