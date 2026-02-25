@@ -226,10 +226,135 @@
   color: #4caf50;
 }
 
+.profitability-overall {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.profitability-overall h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.profitability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.profitability-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profitability-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.profitability-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #4a9eff;
+}
+
+.profitability-value.profitable {
+  color: #4caf50;
+}
+
 .section-description {
   font-size: 14px;
   color: #aaa;
   margin: 0 0 16px 0;
+}
+
+.threshold-slider-section {
+  margin-top: 24px;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.threshold-slider-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.threshold-slider {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #3a3a3a;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.threshold-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4a9eff;
+  cursor: pointer;
+  border: 2px solid #1e1e1e;
+}
+
+.threshold-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4a9eff;
+  cursor: pointer;
+  border: 2px solid #1e1e1e;
+}
+
+.slider-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #3c4043;
+  border-radius: 4px;
+  background: #292a2d;
+  color: #e8eaed;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+}
+
+.slider-btn:hover {
+  background: #3a3a3a;
+}
+
+.slider-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #4a9eff;
+  min-width: 50px;
+  text-align: right;
 }
 
 .betting-matches-section {
@@ -299,6 +424,11 @@
 
 .betting-matches-table td.loss {
   color: #f44336;
+}
+
+.betting-matches-table td.highest-vote {
+  color: #4a9eff;
+  font-weight: 700;
 }
 
 .betting-matches-table td.draw-result {
