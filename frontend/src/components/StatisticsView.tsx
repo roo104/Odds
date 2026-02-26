@@ -13,6 +13,7 @@ function StatisticsView() {
   const [availableCountries, setAvailableCountries] = useState<string[]>([]);
   const [loadingCountries, setLoadingCountries] = useState(false);
   const [voteThreshold, setVoteThreshold] = useState<number>(50);
+  const [minOdds, setMinOdds] = useState<number>(100);
 
   useEffect(() => {
     loadAvailableCountries();
@@ -65,9 +66,19 @@ function StatisticsView() {
     }
   };
 
-  const calculateThresholdStats = (matches: ProfitabilityResponse['matches'], threshold: number) => {
+  const minOddsValue = minOdds / 100;
+
+  const filterMatches = (matches: ProfitabilityResponse['matches']) => {
+    if (!matches) return [];
+    return matches.filter(m =>
+      m.favoriteVote != null && m.favoriteVote >= voteThreshold &&
+      m.favoriteOdds != null && m.favoriteOdds >= minOddsValue
+    );
+  };
+
+  const calculateThresholdStats = (matches: ProfitabilityResponse['matches']) => {
     if (!matches || matches.length === 0) return null;
-    const filtered = matches.filter(m => m.favoriteVote != null && m.favoriteVote >= threshold);
+    const filtered = filterMatches(matches);
     if (filtered.length === 0) return { matches: 0, favoriteWins: 0, avgOdds: null, roi: null };
     const totalStaked = filtered.length;
     const wins = filtered.filter(m => m.favoriteWon === true);
@@ -77,7 +88,7 @@ function StatisticsView() {
     return { matches: totalStaked, favoriteWins: wins.length, avgOdds, roi };
   };
 
-  const sliderStats = profitability?.matches ? calculateThresholdStats(profitability.matches, voteThreshold) : null;
+  const sliderStats = profitability?.matches ? calculateThresholdStats(profitability.matches) : null;
 
   const overallStats = useMemo(() => {
     const matches = profitability?.matches;
@@ -294,27 +305,55 @@ function StatisticsView() {
 
                 {profitability.matches && profitability.matches.length > 0 && (
                   <div className="threshold-slider-section">
-                    <h3>Custom Vote Threshold</h3>
-                    <div className="slider-container">
-                      <button
-                        type="button"
-                        className="slider-btn"
-                        onClick={() => setVoteThreshold(Math.max(30, voteThreshold - 1))}
-                      >-</button>
-                      <input
-                        type="range"
-                        min={30}
-                        max={99}
-                        value={voteThreshold}
-                        onChange={(e) => setVoteThreshold(Number(e.target.value))}
-                        className="threshold-slider"
-                      />
-                      <button
-                        type="button"
-                        className="slider-btn"
-                        onClick={() => setVoteThreshold(Math.min(99, voteThreshold + 1))}
-                      >+</button>
-                      <span className="slider-value">{voteThreshold}%</span>
+                    <h3>Filters</h3>
+                    <div className="slider-row">
+                      <span className="slider-label">Min Vote</span>
+                      <div className="slider-container">
+                        <button
+                          type="button"
+                          className="slider-btn"
+                          onClick={() => setVoteThreshold(Math.max(30, voteThreshold - 1))}
+                        >-</button>
+                        <input
+                          type="range"
+                          min={30}
+                          max={99}
+                          value={voteThreshold}
+                          onChange={(e) => setVoteThreshold(Number(e.target.value))}
+                          className="threshold-slider"
+                        />
+                        <button
+                          type="button"
+                          className="slider-btn"
+                          onClick={() => setVoteThreshold(Math.min(99, voteThreshold + 1))}
+                        >+</button>
+                        <span className="slider-value">{voteThreshold}%</span>
+                      </div>
+                    </div>
+                    <div className="slider-row">
+                      <span className="slider-label">Min Odds</span>
+                      <div className="slider-container">
+                        <button
+                          type="button"
+                          className="slider-btn"
+                          onClick={() => setMinOdds(Math.max(100, minOdds - 5))}
+                        >-</button>
+                        <input
+                          type="range"
+                          min={100}
+                          max={500}
+                          step={5}
+                          value={minOdds}
+                          onChange={(e) => setMinOdds(Number(e.target.value))}
+                          className="threshold-slider"
+                        />
+                        <button
+                          type="button"
+                          className="slider-btn"
+                          onClick={() => setMinOdds(Math.min(500, minOdds + 5))}
+                        >+</button>
+                        <span className="slider-value">{minOddsValue.toFixed(2)}</span>
+                      </div>
                     </div>
                     {sliderStats && (
                       <div className="profitability-grid" style={{marginTop: '12px'}}>
@@ -348,7 +387,7 @@ function StatisticsView() {
 
                 {profitability.matches && profitability.matches.length > 0 && (
                   <div className="betting-matches-section">
-                    <h3>Matches ({profitability.matches.filter(m => m.favoriteVote != null && m.favoriteVote >= voteThreshold).length})</h3>
+                    <h3>Matches ({filterMatches(profitability.matches).length})</h3>
                     <div className="betting-matches-table-container">
                       <table className="betting-matches-table">
                         <thead>
@@ -367,7 +406,7 @@ function StatisticsView() {
                           </tr>
                         </thead>
                         <tbody>
-                          {profitability.matches.filter(m => m.favoriteVote != null && m.favoriteVote >= voteThreshold).map((match, index) => {
+                          {filterMatches(profitability.matches).map((match, index) => {
                             const isDraw = match.homeScore === match.awayScore;
                             const homeIsWinner = match.homeScore > match.awayScore;
                             const awayIsWinner = match.awayScore > match.homeScore;

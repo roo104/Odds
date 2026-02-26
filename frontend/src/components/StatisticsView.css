@@ -291,10 +291,30 @@
   color: #fff;
 }
 
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.slider-row:last-of-type {
+  margin-bottom: 0;
+}
+
+.slider-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #aaa;
+  min-width: 65px;
+  flex-shrink: 0;
+}
+
 .slider-container {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
+  flex: 1;
 }
 
 .threshold-slider {
