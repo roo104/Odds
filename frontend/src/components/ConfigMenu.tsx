@@ -13,20 +13,23 @@ export interface ConfigSettings {
   endDate: Date;
   sport: 'football' | 'handball';
   intervalSeconds: number;
+  majorLeaguesOnly: boolean;
 }
 
-function ConfigMenu({ onStart, onStop, isRunning, currentDate }: ConfigMenuProps) {
+function ConfigMenu({ onStart, isRunning }: ConfigMenuProps) {
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [sport, setSport] = useState<'football' | 'handball'>('football');
   const [intervalSeconds, setIntervalSeconds] = useState(10);
+  const [majorLeaguesOnly, setMajorLeaguesOnly] = useState(true);
 
   const handleStart = () => {
     const config: ConfigSettings = {
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       sport,
-      intervalSeconds
+      intervalSeconds,
+      majorLeaguesOnly
     };
     onStart(config);
   };
@@ -71,6 +74,15 @@ function ConfigMenu({ onStart, onStop, isRunning, currentDate }: ConfigMenuProps
             min="1"
             value={intervalSeconds}
             onChange={(e) => setIntervalSeconds(parseInt(e.target.value))}
+            disabled={isRunning}
+          />
+        </div>
+        <div className="config-row">
+          <label>Major Leagues Only</label>
+          <input
+            type="checkbox"
+            checked={majorLeaguesOnly}
+            onChange={(e) => setMajorLeaguesOnly(e.target.checked)}
             disabled={isRunning}
           />
         </div>

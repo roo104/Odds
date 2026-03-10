@@ -35,7 +35,7 @@ function App() {
     setSharedDate(new Date(config.startDate));
 
     // Make initial API call
-    await makeRefreshCall(config.startDate, config.sport);
+    await makeRefreshCall(config.startDate, config.sport, config.majorLeaguesOnly);
 
     // Start interval
     intervalRef.current = setInterval(async () => {
@@ -54,19 +54,20 @@ function App() {
       setSharedDate(new Date(nextDate));
 
       // Make API call for this date
-      await makeRefreshCall(nextDate, config.sport);
+      await makeRefreshCall(nextDate, config.sport, config.majorLeaguesOnly);
     }, config.intervalSeconds * 1000);
   };
 
-  const makeRefreshCall = async (date: Date, sport: 'football' | 'handball') => {
+  const makeRefreshCall = async (date: Date, sport: 'football' | 'handball', majorLeaguesOnly: boolean = true) => {
     try {
       const dateStr = date.toISOString().split('T')[0];
       console.log(`Refreshing ${sport} matches for ${dateStr}`);
+      const includeAllLeagues = !majorLeaguesOnly;
 
       if (sport === 'football') {
-        await footballApi.refreshMatchesByDate(dateStr, false);
+        await footballApi.refreshMatchesByDate(dateStr, includeAllLeagues);
       } else {
-        await handballApi.refreshMatchesByDate(dateStr, true);
+        await handballApi.refreshMatchesByDate(dateStr, includeAllLeagues);
       }
 
       console.log(`Successfully refreshed ${sport} matches for ${dateStr}`);

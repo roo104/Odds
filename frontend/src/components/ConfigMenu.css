@@ -54,6 +54,12 @@
   color: #e0e0e0;
 }
 
+.config-row input[type="checkbox"] {
+  flex: 0;
+  width: 18px;
+  height: 18px;
+}
+
 .config-row input:disabled,
 .config-row select:disabled {
   background-color: #1e1e1e;
