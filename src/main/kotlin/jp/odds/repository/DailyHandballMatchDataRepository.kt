@@ -30,4 +30,20 @@ interface DailyHandballMatchDataRepository : JpaRepository<DailyHandballMatchDat
         ORDER BY m.id DESC
     """)
     fun findFinishedMatchesByCountry(countryName: String, pageable: Pageable): List<DailyHandballMatchData>
+
+    /**
+     * Seeds match discovery: every league we have already recorded, with the newest season id we
+     * hold as a fallback for when the live season lookup fails.
+     */
+    @Query(value = """
+        SELECT tournament_id,
+               tournament_name,
+               MAX(season_id) AS season_id,
+               MAX(unique_tournament_id) AS unique_tournament_id
+        FROM daily_handball_match_data
+        WHERE match_date >= :since
+        GROUP BY tournament_id, tournament_name
+        ORDER BY MAX(match_date) DESC
+    """, nativeQuery = true)
+    fun findTrackedLeagues(since: java.time.LocalDate): List<Array<Any?>>
 }

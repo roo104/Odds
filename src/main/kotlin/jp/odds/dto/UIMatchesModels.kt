@@ -20,6 +20,38 @@ data class MatchHistoryResponse(
     val votesHistory: List<VotesHistoryPoint>
 )
 
+/**
+ * Sofascore's per-match statistics (/event/{id}/statistics), flattened for the UI.
+ *
+ * Only populated once a match is under way - Sofascore 404s the endpoint before kick-off, which
+ * surfaces here as an empty [periods] list.
+ */
+data class MatchStatisticsResponse(
+    val periods: List<MatchStatisticsPeriod>
+)
+
+/** One period of the match: `ALL`, `1ST` or `2ND`. */
+data class MatchStatisticsPeriod(
+    val period: String,
+    val groups: List<MatchStatisticsGroup>
+)
+
+data class MatchStatisticsGroup(
+    val groupName: String,
+    val items: List<MatchStatisticsItem>
+)
+
+data class MatchStatisticsItem(
+    val name: String,
+    val home: String,
+    val away: String,
+    /** Numeric side of [home]/[away] when Sofascore provides it, for drawing comparison bars. */
+    val homeValue: Double?,
+    val awayValue: Double?,
+    /** Sofascore's verdict on who leads this stat: 1 = home, 2 = away, 3 = level. */
+    val compareCode: Int?
+)
+
 data class WinningMatchStatistics(
     val averageVote: Double,
     val averageOdds: Double,

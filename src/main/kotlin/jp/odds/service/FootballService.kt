@@ -7,14 +7,12 @@ import jp.odds.entity.DailyFootballMatchData
 import jp.odds.repository.DailyFootballMatchDataRepository
 import jp.odds.repository.MatchOddsHistoryRepository
 import jp.odds.repository.MatchVotesHistoryRepository
-import jp.odds.service.response.model.ScheduledEventsResponse
 import jp.odds.service.response.model.SofascoreEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.reactive.function.client.awaitBody
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -26,6 +24,12 @@ class FootballService(
     matchOddsHistoryRepository: MatchOddsHistoryRepository,
     matchVotesHistoryRepository: MatchVotesHistoryRepository
 ) : BaseSofascoreService(webClientBuilder, matchOddsHistoryRepository, matchVotesHistoryRepository) {
+
+    private companion object {
+        const val LEAGUE_SEED_LOOKBACK_DAYS = 400L
+    }
+
+    override val sportSlug: String = "football"
 
     suspend fun getTodayMatches(): List<SofascoreEvent> {
         val tomorrow = LocalDate.now().plusDays(1)
@@ -40,32 +44,18 @@ class FootballService(
             return loadMatchesFromDatabase(date)
         }
 
-        val uri = "/sport/football/scheduled-events/$dateStr"
-        logger.info("Fetching football matches for date: $dateStr from URI: $uri (forceRefresh=${true})")
-
         return try {
-            val response = webClient
-                .get()
-                .uri(uri)
-                .retrieve()
-                .awaitBody<ScheduledEventsResponse>()
-
-            logger.info("Successfully fetched ${response.events.size} matches")
-
-            val events = response.events.map { scheduledEvent ->
-                convertScheduledEventToSofascoreEvent(scheduledEvent)
+            // Leagues we already collect, widened with the config-pinned extras and Sofascore's
+            // current top competitions so a new league (or an empty database) still gets picked up.
+            val leagues = discoveryLeagues(loadTrackedLeagues(onlyTopLeagues = !includeAllLeagues))
+            if (leagues.isEmpty()) {
+                logger.warn("No football leagues to poll for $dateStr - database empty and top-competitions lookup failed")
+                return emptyList()
             }
+            logger.info("Fetching football matches for date: $dateStr across ${leagues.size} tracked leagues")
 
-            val filteredEvents = if (includeAllLeagues) {
-                events.map { event ->
-                    event.copy(isTopLeague = isTopLeague(event))
-                }
-            } else {
-                events.filter { isTopLeague(it) }.map { event ->
-                    event.copy(isTopLeague = true)
-                }
-            }
-            logger.info("Filtered to ${filteredEvents.size} ${if (includeAllLeagues) "total" else "top league"} matches for $dateStr")
+            val filteredEvents = fetchEventsForDate(date, leagues, includeAllLeagues)
+            logger.info("Fetched ${filteredEvents.size} ${if (includeAllLeagues) "total" else "top league"} matches for $dateStr")
 
             val now = Instant.now()
             val eventStatistics = mutableMapOf<Long, jp.odds.service.response.model.EventStatistics?>()
@@ -180,8 +170,32 @@ class FootballService(
         )
     }
 
-    private fun isTopLeague(event: SofascoreEvent): Boolean =
-        event.eventFilters?.level?.contains("top-competitions") ?: false
+    /**
+     * Leagues to poll, seeded from what we have already collected. The old scheduled-events feed
+     * tagged each event with `eventFilters.level`, which the per-tournament feed does not carry -
+     * so a league's top-league status now comes from the row we stored for it.
+     */
+    private suspend fun loadTrackedLeagues(onlyTopLeagues: Boolean): List<TrackedLeague> =
+        withContext(Dispatchers.IO) {
+            val since = LocalDate.now().minusDays(LEAGUE_SEED_LOOKBACK_DAYS)
+            dailyFootballMatchDataRepository.findTrackedLeagues(onlyTopLeagues, since).map { row ->
+                val uniqueTournamentId = (row.getOrNull(4) as Number?)?.toLong()
+                TrackedLeague(
+                    // Prefer the stable league id; rows written before it was stored only have the
+                    // season-scoped one, which the day's tournament list also carries.
+                    tournamentId = uniqueTournamentId ?: (row[0] as Number).toLong(),
+                    tournamentName = row[1] as String,
+                    // MySQL hands MAX() over a BOOLEAN column back as a Boolean, but the aggregate
+                    // is numeric on other engines - accept either rather than blowing up on a cast.
+                    isTopLeague = when (val flag = row.getOrNull(3)) {
+                        is Boolean -> flag
+                        is Number -> flag.toInt() != 0
+                        else -> true
+                    },
+                    isUniqueTournament = uniqueTournamentId != null
+                )
+            }
+        }
 
     private suspend fun loadMatchesFromDatabase(matchDate: LocalDate): List<SofascoreEvent> {
         val startOfDay = matchDate.atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond()
@@ -258,6 +272,7 @@ class FootballService(
                 awayTeamName = event.awayTeam.name,
                 tournamentId = event.tournament.id,
                 tournamentName = event.tournament.name,
+                uniqueTournamentId = event.tournament.uniqueTournamentId,
                 seasonId = event.season?.id,
                 categoryName = event.tournament.category.name,
                 countryName = event.tournament.category.country?.name,
@@ -277,7 +292,7 @@ class FootballService(
                 statusType = event.status.type,
                 statusDescription = event.status.description,
                 lastUpdated = now,
-                isTopLeague = isTopLeague(event)
+                isTopLeague = event.isTopLeague ?: true
             )
         }
 

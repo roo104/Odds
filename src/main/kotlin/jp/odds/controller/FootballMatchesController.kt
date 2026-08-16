@@ -72,6 +72,10 @@ class FootballMatchesController(private val footballService: FootballService) {
         }
     )
 
+    @GetMapping("/matches/{eventId}/statistics")
+    suspend fun getMatchStatistics(@PathVariable eventId: Long): MatchStatisticsResponse =
+        footballService.getMatchStatistics(eventId)
+
     @GetMapping("/statistics/winning-matches")
     suspend fun getWinningMatchStatistics(): WinningMatchStatistics = footballService.getWinningMatchStatistics()
 

@@ -46,6 +46,10 @@ data class DailyFootballMatchData(
     @Column(name = "tournament_name", nullable = false)
     override val tournamentName: String = "",
 
+    /** Stable league id; [tournamentId] is season-scoped. Seeds per-tournament match discovery. */
+    @Column(name = "unique_tournament_id")
+    val uniqueTournamentId: Long? = null,
+
     @Column(name = "season_id")
     val seasonId: Long? = null,
 

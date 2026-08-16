@@ -1,5 +1,12 @@
 import {useEffect, useState} from 'react';
-import {BetSelection, MatchHistoryResponse, SofascoreEvent, SportType, StandingsResponse} from '../types';
+import {
+    BetSelection,
+    MatchHistoryResponse,
+    MatchStatisticsResponse,
+    SofascoreEvent,
+    SportType,
+    StandingsResponse
+} from '../types';
 import MatchesApi, {betsApi} from '../services/api';
 import {CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 import './TeamDialog.css';
@@ -18,8 +25,10 @@ function TeamDialog({ event, onClose, api, sport }: TeamDialogProps) {
   const [awayTeamPage, setAwayTeamPage] = useState(0);
   const [standings, setStandings] = useState<StandingsResponse | null>(null);
   const [matchHistory, setMatchHistory] = useState<MatchHistoryResponse | null>(null);
+  const [matchStatistics, setMatchStatistics] = useState<MatchStatisticsResponse | null>(null);
+  const [statisticsPeriod, setStatisticsPeriod] = useState('ALL');
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'matches' | 'standings' | 'history'>('matches');
+  const [activeTab, setActiveTab] = useState<'matches' | 'standings' | 'history' | 'statistics'>('matches');
   const [betStatus, setBetStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [betLoading, setBetLoading] = useState(false);
 
@@ -28,6 +37,8 @@ function TeamDialog({ event, onClose, api, sport }: TeamDialogProps) {
   useEffect(() => {
     setStandings(null); // Reset standings when event changes
     setMatchHistory(null); // Reset match history when event changes
+    setMatchStatistics(null); // Reset match statistics when event changes
+    setStatisticsPeriod('ALL');
     setHomeTeamPage(0); // Reset pagination when event changes
     setAwayTeamPage(0); // Reset pagination when event changes
     setBetStatus(null);
@@ -38,14 +49,20 @@ function TeamDialog({ event, onClose, api, sport }: TeamDialogProps) {
   const loadTeamEvents = async () => {
     setLoading(true);
     try {
-      const [home, away, history] = await Promise.all([
+      const [home, away, history, statistics] = await Promise.all([
         api.getTeamEvents(event.homeTeam.id),
         api.getTeamEvents(event.awayTeam.id),
         api.getMatchHistory(event.id),
+        // Sofascore has no statistics before kick-off, so a failure here must not lose the rest.
+        api.getMatchStatistics(event.id).catch((error) => {
+          console.warn('Failed to load match statistics:', error);
+          return { periods: [] } as MatchStatisticsResponse;
+        }),
       ]);
       setHomeTeamEvents(home);
       setAwayTeamEvents(away);
       setMatchHistory(history);
+      setMatchStatistics(statistics);
 
       // Try to fetch league standings if it's a league tournament
       // Skip if tournament ID is 0 (invalid/not saved properly)
@@ -133,6 +150,25 @@ function TeamDialog({ event, onClose, api, sport }: TeamDialogProps) {
 
   const homePoints = calculatePoints(homeTeamEvents.slice(0, 5), event.homeTeam.id);
   const awayPoints = calculatePoints(awayTeamEvents.slice(0, 5), event.awayTeam.id);
+
+  const statisticsPeriods = matchStatistics?.periods ?? [];
+  const hasStatistics = statisticsPeriods.some((period) => period.groups.some((group) => group.items.length > 0));
+  const selectedPeriod = statisticsPeriods.find((period) => period.period === statisticsPeriod) ?? statisticsPeriods[0];
+
+  const PERIOD_LABELS: Record<string, string> = {
+    ALL: 'Full match',
+    '1ST': '1st half',
+    '2ND': '2nd half',
+  };
+
+  // Sofascore serves each side's numeric value only for comparable stats; the rest (e.g. "12/24 (50%)")
+  // stay text-only, so the bar falls back to an even split rather than guessing.
+  const statisticShare = (home?: number, away?: number): { home: number; away: number } | null => {
+    if (home === undefined || away === undefined) return null;
+    const total = home + away;
+    if (total <= 0) return null;
+    return { home: (home / total) * 100, away: (away / total) * 100 };
+  };
 
   const handlePlaceBet = async (selection: BetSelection) => {
     setBetLoading(true);
@@ -257,6 +293,15 @@ function TeamDialog({ event, onClose, api, sport }: TeamDialogProps) {
                 title={(!matchHistory || (matchHistory.oddsHistory.length === 0 && matchHistory.votesHistory.length === 0)) ? 'History not available' : 'Odds and votes evolution'}
               >
                 History
+              </button>
+              <button
+                type="button"
+                className={`dialog-tab ${activeTab === 'statistics' ? 'active' : ''}`}
+                onClick={() => setActiveTab('statistics')}
+                disabled={!hasStatistics}
+                title={!hasStatistics ? 'Statistics available once the match has started' : 'Match statistics'}
+              >
+                Statistics
               </button>
             </div>
 
@@ -408,7 +453,7 @@ function TeamDialog({ event, onClose, api, sport }: TeamDialogProps) {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : activeTab === 'history' ? (
               <div className="history-section">
                 <h3>Odds & Votes Evolution</h3>
                 {matchHistory && matchHistory.oddsHistory.length > 0 && (
@@ -514,6 +559,59 @@ function TeamDialog({ event, onClose, api, sport }: TeamDialogProps) {
                 {matchHistory && matchHistory.oddsHistory.length === 0 && matchHistory.votesHistory.length === 0 && (
                   <p>No historical data available yet. Data will be recorded as odds and votes are refreshed.</p>
                 )}
+              </div>
+            ) : (
+              <div className="statistics-section">
+                <h3>Match Statistics</h3>
+                {statisticsPeriods.length > 1 && (
+                  <div className="statistics-periods">
+                    {statisticsPeriods.map((period) => (
+                      <button
+                        key={period.period}
+                        type="button"
+                        className={`statistics-period ${selectedPeriod?.period === period.period ? 'active' : ''}`}
+                        onClick={() => setStatisticsPeriod(period.period)}
+                      >
+                        {PERIOD_LABELS[period.period] ?? period.period}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="statistics-teams">
+                  <span className="statistics-team home">{event.homeTeam.name}</span>
+                  <span className="statistics-team away">{event.awayTeam.name}</span>
+                </div>
+                {selectedPeriod?.groups.map((group, groupIdx) => (
+                  <div className="statistics-group" key={`${group.groupName}-${groupIdx}`}>
+                    {group.groupName && <h4>{group.groupName}</h4>}
+                    {group.items.map((item, itemIdx) => {
+                      const share = statisticShare(item.homeValue, item.awayValue);
+                      return (
+                        <div className="statistic-row" key={`${item.name}-${itemIdx}`}>
+                          <div className="statistic-values">
+                            <span className={`statistic-value ${item.compareCode === 1 ? 'leading' : ''}`}>
+                              {item.home}
+                            </span>
+                            <span className="statistic-name">{item.name}</span>
+                            <span className={`statistic-value ${item.compareCode === 2 ? 'leading' : ''}`}>
+                              {item.away}
+                            </span>
+                          </div>
+                          {share && (
+                            <div className="statistic-bars">
+                              <div className="statistic-bar-track home">
+                                <div className="statistic-bar home" style={{ width: `${share.home}%` }} />
+                              </div>
+                              <div className="statistic-bar-track away">
+                                <div className="statistic-bar away" style={{ width: `${share.away}%` }} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             )}
           </>

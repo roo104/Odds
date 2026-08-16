@@ -70,6 +70,10 @@ class HandballMatchesController(private val handballService: HandballService) {
         }
     )
 
+    @GetMapping("/matches/{eventId}/statistics")
+    suspend fun getMatchStatistics(@PathVariable eventId: Long): MatchStatisticsResponse =
+        handballService.getMatchStatistics(eventId)
+
     @GetMapping("/statistics/winning-matches")
     suspend fun getWinningMatchStatistics(): WinningMatchStatistics = handballService.getWinningMatchStatistics()
 

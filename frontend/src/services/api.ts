@@ -3,6 +3,7 @@ import {
     BetsPageResponse,
     MatchBet,
     MatchHistoryResponse,
+    MatchStatisticsResponse,
     SofascoreEvent,
     SportType,
     StandingsResponse
@@ -69,6 +70,7 @@ interface MatchesApi {
   refreshSingleMatch: (eventId: number, date: string) => Promise<SofascoreEvent>;
   getTournamentStandings: (tournamentId: number, seasonId: number) => Promise<StandingsResponse | null>;
   getMatchHistory: (eventId: number) => Promise<MatchHistoryResponse>;
+  getMatchStatistics: (eventId: number) => Promise<MatchStatisticsResponse>;
   getWinningMatchStatistics?: () => Promise<WinningMatchStatistics>;
   getWinningMatchStatisticsByLeague?: (country?: string, topLeaguesOnly?: boolean) => Promise<WinningMatchStatisticsByLeague>;
   getProfitableThresholds?: (country?: string, topLeaguesOnly?: boolean) => Promise<ProfitabilityResponse>;
@@ -148,6 +150,12 @@ export const footballApi: MatchesApi = {
   getMatchHistory: async (eventId: number): Promise<MatchHistoryResponse> => {
     const response = await fetch(`${FOOTBALL_API_BASE_URL}/matches/${eventId}/history`);
     if (!response.ok) throw new Error('Failed to fetch match history');
+    return response.json();
+  },
+
+  getMatchStatistics: async (eventId: number): Promise<MatchStatisticsResponse> => {
+    const response = await fetch(`${FOOTBALL_API_BASE_URL}/matches/${eventId}/statistics`);
+    if (!response.ok) throw new Error('Failed to fetch match statistics');
     return response.json();
   },
 
@@ -235,6 +243,12 @@ export const handballApi: MatchesApi = {
   getMatchHistory: async (eventId: number): Promise<MatchHistoryResponse> => {
     const response = await fetch(`${HANDBALL_API_BASE_URL}/matches/${eventId}/history`);
     if (!response.ok) throw new Error('Failed to fetch match history');
+    return response.json();
+  },
+
+  getMatchStatistics: async (eventId: number): Promise<MatchStatisticsResponse> => {
+    const response = await fetch(`${HANDBALL_API_BASE_URL}/matches/${eventId}/statistics`);
+    if (!response.ok) throw new Error('Failed to fetch match statistics');
     return response.json();
   },
 

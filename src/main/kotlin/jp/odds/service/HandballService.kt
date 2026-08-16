@@ -7,14 +7,12 @@ import jp.odds.entity.DailyHandballMatchData
 import jp.odds.repository.DailyHandballMatchDataRepository
 import jp.odds.repository.MatchOddsHistoryRepository
 import jp.odds.repository.MatchVotesHistoryRepository
-import jp.odds.service.response.model.ScheduledEventsResponse
 import jp.odds.service.response.model.SofascoreEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.reactive.function.client.awaitBody
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -26,6 +24,12 @@ class HandballService(
     matchOddsHistoryRepository: MatchOddsHistoryRepository,
     matchVotesHistoryRepository: MatchVotesHistoryRepository
 ) : BaseSofascoreService(webClientBuilder, matchOddsHistoryRepository, matchVotesHistoryRepository) {
+
+    private companion object {
+        const val LEAGUE_SEED_LOOKBACK_DAYS = 400L
+    }
+
+    override val sportSlug: String = "handball"
 
     suspend fun getTodayMatches(): List<SofascoreEvent> {
         val tomorrow = LocalDate.now().plusDays(1)
@@ -40,21 +44,16 @@ class HandballService(
             return loadMatchesFromDatabase(date)
         }
 
-        val uri = "/sport/handball/scheduled-events/$dateStr"
-        logger.info("Fetching handball matches for date: $dateStr from URI: $uri (forceRefresh=${true})")
-
         return try {
-            val response = webClient
-                .get()
-                .uri(uri)
-                .retrieve()
-                .awaitBody<ScheduledEventsResponse>()
-
-            logger.info("Successfully fetched ${response.events.size} matches")
-
-            val events = response.events.map { scheduledEvent ->
-                convertScheduledEventToSofascoreEvent(scheduledEvent)
+            val leagues = discoveryLeagues(loadTrackedLeagues())
+            if (leagues.isEmpty()) {
+                logger.warn("No handball leagues to poll for $dateStr - database empty and top-competitions lookup failed")
+                return emptyList()
             }
+            logger.info("Fetching handball matches for date: $dateStr across ${leagues.size} tracked leagues")
+
+            val events = fetchEventsForDate(date, leagues)
+            logger.info("Fetched ${events.size} handball matches for $dateStr")
 
             val now = Instant.now()
             events.forEach { event ->
@@ -153,6 +152,22 @@ class HandballService(
         )
     }
 
+    /** Leagues to poll, seeded from what we have already collected. Handball tracks every league. */
+    private suspend fun loadTrackedLeagues(): List<TrackedLeague> = withContext(Dispatchers.IO) {
+        val since = LocalDate.now().minusDays(LEAGUE_SEED_LOOKBACK_DAYS)
+        dailyHandballMatchDataRepository.findTrackedLeagues(since).map { row ->
+            val uniqueTournamentId = (row.getOrNull(3) as Number?)?.toLong()
+            TrackedLeague(
+                // Prefer the stable league id; rows written before it was stored only have the
+                // season-scoped one, which the day's tournament list also carries.
+                tournamentId = uniqueTournamentId ?: (row[0] as Number).toLong(),
+                tournamentName = row[1] as String,
+                isUniqueTournament = uniqueTournamentId != null
+            )
+
+        }
+    }
+
     private suspend fun loadMatchesFromDatabase(matchDate: LocalDate): List<SofascoreEvent> {
         val startOfDay = matchDate.atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond()
         val endOfDay = matchDate.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond()
@@ -223,6 +238,7 @@ class HandballService(
                 awayTeamName = event.awayTeam.name,
                 tournamentId = event.tournament.id,
                 tournamentName = event.tournament.name,
+                uniqueTournamentId = event.tournament.uniqueTournamentId,
                 seasonId = event.season?.id,
                 categoryName = event.tournament.category.name,
                 countryName = event.tournament.category.country?.name,

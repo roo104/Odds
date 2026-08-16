@@ -111,6 +111,31 @@ export interface MatchHistoryResponse {
   votesHistory: VotesHistoryPoint[];
 }
 
+export interface MatchStatisticsItem {
+  name: string;
+  home: string;
+  away: string;
+  homeValue?: number;
+  awayValue?: number;
+  /** 1 = home leads this stat, 2 = away leads, 3 = level. */
+  compareCode?: number;
+}
+
+export interface MatchStatisticsGroup {
+  groupName: string;
+  items: MatchStatisticsItem[];
+}
+
+export interface MatchStatisticsPeriod {
+  /** `ALL`, `1ST` or `2ND`. */
+  period: string;
+  groups: MatchStatisticsGroup[];
+}
+
+export interface MatchStatisticsResponse {
+  periods: MatchStatisticsPeriod[];
+}
+
 export type SportType = 'Football' | 'Handball';
 
 export type BetSelection = 'HOME' | 'DRAW' | 'AWAY';

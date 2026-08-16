@@ -62,6 +62,25 @@ interface DailyFootballMatchDataRepository : JpaRepository<DailyFootballMatchDat
     """, nativeQuery = true)
     fun findTopLeaguesForCurrentYear(): List<Array<Any>>
 
+    /**
+     * Seeds match discovery: every league we have already recorded, with the newest season id we
+     * hold as a fallback for when the live season lookup fails. [onlyTopLeagues] passed as false
+     * widens discovery to every league in the table.
+     */
+    @Query(value = """
+        SELECT tournament_id,
+               tournament_name,
+               MAX(season_id) AS season_id,
+               MAX(CASE WHEN is_top_league THEN 1 ELSE 0 END) AS is_top_league,
+               MAX(unique_tournament_id) AS unique_tournament_id
+        FROM daily_football_match_data
+        WHERE (:onlyTopLeagues = false OR is_top_league = true)
+        AND match_date >= :since
+        GROUP BY tournament_id, tournament_name
+        ORDER BY MAX(match_date) DESC
+    """, nativeQuery = true)
+    fun findTrackedLeagues(onlyTopLeagues: Boolean, since: java.time.LocalDate): List<Array<Any?>>
+
     @Query(value = """
         SELECT DISTINCT country_name
         FROM daily_football_match_data

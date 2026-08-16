@@ -4,6 +4,31 @@ data class ScheduledEventsResponse(
     val events: List<ScheduledEvent>
 )
 
+/**
+ * Response of /tournament/{id}/season/{seasonId}/events/{next|last}/{page}.
+ *
+ * Sofascore withdrew the bulk /sport/{sport}/scheduled-events/{date} endpoint (it now 404s for
+ * every sport and date), so match discovery walks the tracked tournaments instead. Events carry
+ * the same shape as the old scheduled-events payload minus `eventFilters`.
+ */
+data class TournamentEventsResponse(
+    val events: List<ScheduledEvent> = emptyList(),
+    val hasNextPage: Boolean? = null
+)
+
+/**
+ * Response of /sport/{sport}/scheduled-tournaments/{date}/page/{n} - the tournaments with fixtures
+ * on a date. Sofascore's replacement for the withdrawn scheduled-events feed; it lists tournaments
+ * rather than events, so each one's fixtures are fetched separately.
+ */
+data class ScheduledTournamentsResponse(
+    val scheduled: List<ScheduledTournamentEntry> = emptyList()
+)
+
+data class ScheduledTournamentEntry(
+    val tournament: ScheduledTournament
+)
+
 data class ScheduledEvent(
     val id: Long,
     val startTimestamp: Long,
@@ -63,7 +88,14 @@ data class Status(
 data class Tournament(
     val id: Long,
     val name: String,
-    val category: Category
+    val category: Category,
+    /** Stable league id, unlike [id] which is scoped to a season. Keys the per-tournament feeds. */
+    val uniqueTournamentId: Long? = null
+)
+
+/** Response of /config/default-unique-tournaments/{alpha2}/{sport} - Sofascore's top competitions. */
+data class DefaultUniqueTournamentsResponse(
+    val uniqueTournaments: List<UniqueTournament> = emptyList()
 )
 
 data class Category(

@@ -421,3 +421,137 @@
   font-size: 13px;
   font-weight: 600;
 }
+
+.statistics-section {
+  padding: 20px;
+  background-color: #2d2d2d;
+}
+
+.statistics-section h3 {
+  color: #e0e0e0;
+  margin: 0 0 15px 0;
+  font-size: 16px;
+}
+
+.statistics-periods {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.statistics-period {
+  background-color: #3a3a3a;
+  border: 1px solid transparent;
+  color: #e0e0e0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.statistics-period:hover {
+  background-color: #4a4a4a;
+}
+
+.statistics-period.active {
+  background-color: #4a4a4a;
+  border-color: #555;
+  color: #fff;
+}
+
+.statistics-teams {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #444;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.statistics-team.home {
+  color: #4a90e2;
+}
+
+.statistics-team.away {
+  color: #e24a4a;
+}
+
+.statistics-group {
+  margin-top: 20px;
+}
+
+.statistics-group h4 {
+  color: #aaa;
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statistic-row {
+  padding: 8px 0;
+  border-bottom: 1px solid #383838;
+}
+
+.statistic-values {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: #e0e0e0;
+}
+
+.statistic-value {
+  min-width: 70px;
+  font-variant-numeric: tabular-nums;
+}
+
+.statistic-values .statistic-value:last-child {
+  text-align: right;
+}
+
+.statistic-value.leading {
+  font-weight: 700;
+  color: #fff;
+}
+
+.statistic-name {
+  flex: 1;
+  text-align: center;
+  color: #aaa;
+}
+
+.statistic-bars {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.statistic-bar-track {
+  flex: 1;
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  background-color: #383838;
+  overflow: hidden;
+}
+
+/* Both bars grow outwards from the centre line, so the home half fills right-to-left. */
+.statistic-bar-track.home {
+  justify-content: flex-end;
+}
+
+.statistic-bar {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.statistic-bar.home {
+  background-color: #4a90e2;
+}
+
+.statistic-bar.away {
+  background-color: #e24a4a;
+}
