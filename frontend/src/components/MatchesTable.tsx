@@ -1,6 +1,34 @@
 import {SofascoreEvent} from '../types';
 import './MatchesTable.css';
 import * as React from "react";
+import {createPortal} from 'react-dom';
+
+interface OddsOutcome {
+  label: string;
+  odds: number;
+  implied: number;
+  fair: number;
+}
+
+interface OddsBreakdown {
+  outcomes: OddsOutcome[];
+  impliedTotal: number;
+  margin: number;
+  insiderShare: number;
+}
+
+interface OddsTooltipState {
+  breakdown: OddsBreakdown;
+  x: number;
+  y: number;
+  placement: 'above' | 'below';
+}
+
+// Rough tooltip height, only used to decide whether it still fits below the row
+const ODDS_TOOLTIP_HEIGHT = 170;
+
+// Bisection steps for Shin's insider share; 60 halvings is far past double precision
+const SHIN_ITERATIONS = 60;
 
 interface MatchesTableProps {
   matches: SofascoreEvent[];
@@ -12,6 +40,8 @@ interface MatchesTableProps {
 }
 
 function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, parseOdds, refreshingMatchId }: MatchesTableProps) {
+  const [oddsTooltip, setOddsTooltip] = React.useState<OddsTooltipState | null>(null);
+
   const formatDateTime = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
     const day = String(date.getDate()).padStart(2, '0');
@@ -87,6 +117,91 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
     return 'draw';
   };
 
+  const formatPercent = (value: number): string => `${(value * 100).toFixed(1)}%`;
+
+  // Shin (1992): the bookmaker prices against a share z of insiders, so the margin
+  // sits more heavily on longshots than a proportional split would put it.
+  const shinProbability = (implied: number, impliedTotal: number, z: number): number =>
+    (Math.sqrt(z * z + 4 * (1 - z) * (implied * implied) / impliedTotal) - z) / (2 * (1 - z));
+
+  // Sum of the Shin probabilities falls as z rises, so bisect for the z that makes them sum to 1
+  const solveInsiderShare = (implied: number[], impliedTotal: number): number => {
+    let low = 0;
+    let high = 1;
+    for (let i = 0; i < SHIN_ITERATIONS; i++) {
+      const z = (low + high) / 2;
+      const sum = implied.reduce((acc, probability) => acc + shinProbability(probability, impliedTotal, z), 0);
+      if (sum > 1) {
+        low = z;
+      } else {
+        high = z;
+      }
+    }
+    return (low + high) / 2;
+  };
+
+  // Implied probability per outcome (1 / decimal odds). They sum to more than 100%;
+  // that excess is the bookmaker margin, which the fair column strips out.
+  const getOddsBreakdown = (match: SofascoreEvent): OddsBreakdown | null => {
+    const outcomes = [
+      { label: 'Home', odds: parseOdds(match.odds?.home) },
+      { label: 'Draw', odds: parseOdds(match.odds?.draw) },
+      { label: 'Away', odds: parseOdds(match.odds?.away) },
+    ].filter((outcome) => outcome.odds > 0);
+
+    if (outcomes.length === 0) return null;
+
+    const implied = outcomes.map((outcome) => 1 / outcome.odds);
+    const impliedTotal = implied.reduce((sum, probability) => sum + probability, 0);
+
+    // Shin needs a real overround to work with; without one it degenerates to a plain rescale
+    const usesShin = outcomes.length > 1 && impliedTotal > 1;
+    const insiderShare = usesShin ? solveInsiderShare(implied, impliedTotal) : 0;
+
+    return {
+      outcomes: outcomes.map((outcome, index) => ({
+        ...outcome,
+        implied: implied[index],
+        fair: usesShin
+          ? shinProbability(implied[index], impliedTotal, insiderShare)
+          : implied[index] / impliedTotal,
+      })),
+      impliedTotal,
+      margin: 1 - 1 / impliedTotal,
+      insiderShare,
+    };
+  };
+
+  const handleOddsEnter = (e: React.MouseEvent<HTMLTableCellElement>, match: SofascoreEvent) => {
+    const breakdown = getOddsBreakdown(match);
+    if (!breakdown) return;
+
+    // Anchor to the whole odds group so the tooltip doesn't jump between cells
+    const cells = e.currentTarget.parentElement?.querySelectorAll('td.odds-cell');
+    if (!cells || cells.length === 0) return;
+
+    const first = cells[0].getBoundingClientRect();
+    const last = cells[cells.length - 1].getBoundingClientRect();
+    const placement = last.bottom + ODDS_TOOLTIP_HEIGHT > window.innerHeight ? 'above' : 'below';
+
+    setOddsTooltip({
+      breakdown,
+      x: (first.left + last.right) / 2,
+      y: placement === 'below' ? last.bottom + 8 : first.top - 8,
+      placement,
+    });
+  };
+
+  const handleOddsLeave = (e: React.MouseEvent<HTMLTableCellElement>) => {
+    // Moving between the three odds cells keeps the same tooltip open
+    const next = e.relatedTarget;
+    if (next instanceof Element) {
+      const nextCell = next.closest('td.odds-cell');
+      if (nextCell && nextCell.parentElement === e.currentTarget.parentElement) return;
+    }
+    setOddsTooltip(null);
+  };
+
   const getTournamentFlag = (match: SofascoreEvent): string | null => {
     if (match.tournament.category.name === 'Europe') {
       return '🇪🇺';
@@ -157,13 +272,25 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
                 <td className="group-start">
                   {match.homeScore?.current ?? '-'} - {match.awayScore?.current ?? '-'}
                 </td>
-                <td className={`group-start ${hasOdds(match) && highestVote === 'home' ? 'highest-value' : ''}`}>
+                <td
+                  className={`odds-cell group-start ${hasOdds(match) && highestVote === 'home' ? 'highest-value' : ''}`}
+                  onMouseEnter={(e) => handleOddsEnter(e, match)}
+                  onMouseLeave={handleOddsLeave}
+                >
                   {formatOdds(match.odds?.home)}
                 </td>
-                <td className={hasOdds(match) && highestVote === 'draw' ? 'highest-value' : ''}>
+                <td
+                  className={`odds-cell ${hasOdds(match) && highestVote === 'draw' ? 'highest-value' : ''}`}
+                  onMouseEnter={(e) => handleOddsEnter(e, match)}
+                  onMouseLeave={handleOddsLeave}
+                >
                   {formatOdds(match.odds?.draw)}
                 </td>
-                <td className={hasOdds(match) && highestVote === 'away' ? 'highest-value' : ''}>
+                <td
+                  className={`odds-cell ${hasOdds(match) && highestVote === 'away' ? 'highest-value' : ''}`}
+                  onMouseEnter={(e) => handleOddsEnter(e, match)}
+                  onMouseLeave={handleOddsLeave}
+                >
                   {formatOdds(match.odds?.away)}
                 </td>
                 <td className={`group-start ${highestVote === 'home' ? 'highest-value' : ''}`}>
@@ -200,6 +327,44 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
           })}
         </tbody>
       </table>
+      {oddsTooltip && createPortal(
+        <div
+          className={`odds-tooltip odds-tooltip-${oddsTooltip.placement}`}
+          style={{ left: oddsTooltip.x, top: oddsTooltip.y }}
+        >
+          <div className="odds-tooltip-title">Implied probability &middot; fair = Shin</div>
+          <table className="odds-tooltip-table">
+            <thead>
+              <tr>
+                <th />
+                <th>Odds</th>
+                <th>Implied</th>
+                <th>Fair</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {oddsTooltip.breakdown.outcomes.map((outcome) => (
+                <tr key={outcome.label}>
+                  <th>{outcome.label}</th>
+                  <td>{outcome.odds.toFixed(2)}</td>
+                  <td>{formatPercent(outcome.implied)}</td>
+                  <td className="odds-tooltip-fair">{formatPercent(outcome.fair)}</td>
+                  <td className="odds-tooltip-bar-cell">
+                    <span className="odds-tooltip-bar" style={{ width: `${outcome.fair * 100}%` }} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="odds-tooltip-footer">
+            <span>Implied total <strong>{formatPercent(oddsTooltip.breakdown.impliedTotal)}</strong></span>
+            <span>Margin <strong>{formatPercent(oddsTooltip.breakdown.margin)}</strong></span>
+            <span>Insider z <strong>{formatPercent(oddsTooltip.breakdown.insiderShare)}</strong></span>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
