@@ -97,22 +97,43 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
   return (
     <div className="matches-table-container">
       <table className="matches-table">
+        <colgroup>
+          <col className="col-datetime" />
+          <col className="col-team" />
+          <col className="col-team" />
+          <col className="col-score" />
+          <col className="col-odds" />
+          <col className="col-odds" />
+          <col className="col-odds" />
+          <col className="col-vote" />
+          <col className="col-vote" />
+          <col className="col-vote" />
+          <col className="col-status" />
+          <col className="col-tournament" />
+          <col className="col-updated" />
+          <col className="col-actions" />
+        </colgroup>
         <thead>
-          <tr>
-            <th>Date & Time</th>
-            <th>Home Team</th>
-            <th>Away Team</th>
-            <th>Score</th>
-            <th>Home Odds</th>
-            <th>Draw Odds</th>
-            <th>Away Odds</th>
-            <th>Home Vote %</th>
-            <th>Draw Vote %</th>
-            <th>Away Vote %</th>
-            <th>Status</th>
-            <th>Tournament</th>
-            <th>Last Updated</th>
-            <th>Actions</th>
+          <tr className="group-header-row">
+            <th rowSpan={2}>Date &amp; Time</th>
+            <th className="group-start" colSpan={2}>Teams</th>
+            <th className="group-start" rowSpan={2}>Score</th>
+            <th className="group-start" colSpan={3}>Odds</th>
+            <th className="group-start" colSpan={3}>Vote %</th>
+            <th className="group-start" rowSpan={2}>Status</th>
+            <th className="group-start" rowSpan={2}>Tournament</th>
+            <th className="group-start" rowSpan={2}>Last Updated</th>
+            <th className="group-start" rowSpan={2}>Actions</th>
+          </tr>
+          <tr className="sub-header-row">
+            <th className="group-start">Home</th>
+            <th>Away</th>
+            <th className="group-start">Home</th>
+            <th>Draw</th>
+            <th>Away</th>
+            <th className="group-start">Home</th>
+            <th>Draw</th>
+            <th>Away</th>
           </tr>
         </thead>
         <tbody>
@@ -127,16 +148,16 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
                 className={shouldHighlight(match) ? 'highlight-row' : ''}
               >
                 <td>{formatDateTime(match.startTimestamp)}</td>
-                <td className={matchResult === 'home-win' ? 'winner' : matchResult === 'away-win' ? 'loser' : matchResult === 'draw' ? 'draw' : ''}>
+                <td className={`group-start ${matchResult === 'home-win' ? 'winner' : matchResult === 'away-win' ? 'loser' : matchResult === 'draw' ? 'draw' : ''}`}>
                   {match.homeTeam.name}
                 </td>
                 <td className={matchResult === 'away-win' ? 'winner' : matchResult === 'home-win' ? 'loser' : matchResult === 'draw' ? 'draw' : ''}>
                   {match.awayTeam.name}
                 </td>
-                <td>
+                <td className="group-start">
                   {match.homeScore?.current ?? '-'} - {match.awayScore?.current ?? '-'}
                 </td>
-                <td className={hasOdds(match) && highestVote === 'home' ? 'highest-value' : ''}>
+                <td className={`group-start ${hasOdds(match) && highestVote === 'home' ? 'highest-value' : ''}`}>
                   {formatOdds(match.odds?.home)}
                 </td>
                 <td className={hasOdds(match) && highestVote === 'draw' ? 'highest-value' : ''}>
@@ -145,7 +166,7 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
                 <td className={hasOdds(match) && highestVote === 'away' ? 'highest-value' : ''}>
                   {formatOdds(match.odds?.away)}
                 </td>
-                <td className={highestVote === 'home' ? 'highest-value' : ''}>
+                <td className={`group-start ${highestVote === 'home' ? 'highest-value' : ''}`}>
                   {match.voting?.home ? `${match.voting.home}%` : '-'}
                 </td>
                 <td className={highestVote === 'draw' ? 'highest-value' : ''}>
@@ -154,17 +175,17 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
                 <td className={highestVote === 'away' ? 'highest-value' : ''}>
                   {match.voting?.away ? `${match.voting.away}%` : '-'}
                 </td>
-                <td>{match.status.description}</td>
-                <td>
+                <td className="group-start">{match.status.description}</td>
+                <td className="group-start">
                   {getTournamentFlag(match) && (
                     <span className="tournament-flag" aria-label="Europe">🇪🇺</span>
                   )}
                   <span className="tournament-name">{match.tournament.name}</span>
                 </td>
-                <td className="last-updated-cell" title={match.lastUpdated ? formatDateTime(match.lastUpdated) : ''}>
+                <td className="last-updated-cell group-start" title={match.lastUpdated ? formatDateTime(match.lastUpdated) : ''}>
                   {formatLastUpdated(match.lastUpdated)}
                 </td>
-                <td>
+                <td className="group-start">
                   <button
                     className="refresh-match-button"
                     onClick={(e) => handleRefreshClick(e, match.id)}

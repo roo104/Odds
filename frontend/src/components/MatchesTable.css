@@ -4,9 +4,22 @@
 
 .matches-table {
   width: 100%;
+  min-width: 1200px;
+  table-layout: fixed;
   border-collapse: collapse;
   background-color: #2d2d2d;
 }
+
+/* Fixed column widths so every matches table on the page lines up */
+.matches-table .col-datetime { width: 10%; }
+.matches-table .col-team { width: 12%; }
+.matches-table .col-score { width: 5%; }
+.matches-table .col-odds { width: 5%; }
+.matches-table .col-vote { width: 5%; }
+.matches-table .col-status { width: 8%; }
+.matches-table .col-tournament { width: 13%; }
+.matches-table .col-updated { width: 6%; }
+.matches-table .col-actions { width: 4%; }
 
 .matches-table th {
   background-color: #3a3a3a;
@@ -15,8 +28,46 @@
   text-align: left;
   font-weight: 600;
   position: sticky;
-  top: 0;
   z-index: 10;
+}
+
+/* Grouped header: top row spans related columns, second row names them */
+.matches-table thead .group-header-row th {
+  top: 0;
+  height: 34px;
+  padding: 8px;
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #9e9e9e;
+  border-bottom: 1px solid #4a4a4a;
+}
+
+.matches-table thead .group-header-row th[colspan] {
+  text-align: center;
+}
+
+/* Single-column groups keep the brighter label colour of the sub-header row */
+.matches-table thead .group-header-row th[rowspan] {
+  color: #e0e0e0;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.matches-table thead .sub-header-row th {
+  top: 34px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+/* Vertical separators between column groups */
+.matches-table th.group-start,
+.matches-table td.group-start {
+  border-left: 1px solid #555;
 }
 
 .matches-table td {
@@ -85,7 +136,11 @@
 
 .matches-table td:first-child {
   white-space: nowrap;
-  min-width: 140px;
+}
+
+/* Long team/tournament names wrap instead of overflowing their fixed column */
+.matches-table td {
+  overflow-wrap: anywhere;
 }
 
 .highest-value {
