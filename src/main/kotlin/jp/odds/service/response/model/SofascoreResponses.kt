@@ -42,6 +42,7 @@ data class ScheduledEvent(
     val season: Season? = null,
     val roundInfo: RoundInfo? = null,
     val time: TimeInfo? = null,
+    val statusTime: StatusTime? = null,
     val eventFilters: EventFilter? = null
 )
 
@@ -56,6 +57,8 @@ data class SofascoreEvent(
     val tournament: Tournament,
     val season: Season? = null,
     val vote: VoteData? = null,
+    val time: TimeInfo? = null,
+    val statusTime: StatusTime? = null,
     val eventFilters: EventFilter? = null,
     var odds: Odds? = null,
     var voting: Voting? = null,
@@ -277,6 +280,18 @@ data class TimeInfo(
     val injuryTime1: Int? = null,
     val injuryTime2: Int? = null,
     val currentPeriodStartTimestamp: Long? = null
+)
+
+/**
+ * The running clock of a live match. [initial] is the clock in seconds at [timestamp], counted
+ * from kick-off (so a second half starts at 2700 for football), [max] is where the current period
+ * ends and [extra] the added time announced for it. Absent before kick-off and after full time.
+ */
+data class StatusTime(
+    val initial: Int? = null,
+    val max: Int? = null,
+    val extra: Int? = null,
+    val timestamp: Long? = null
 )
 
 data class Changes(

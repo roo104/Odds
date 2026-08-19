@@ -5,6 +5,7 @@ import MatchesTable from './MatchesTable';
 import DateNavigation from './DateNavigation';
 import FilterControls from './FilterControls';
 import TeamDialog from './TeamDialog';
+import MatchPredictionDialog from './MatchPredictionDialog';
 import Toast from './Toast';
 import {getCountryFlag} from '../utils/countryFlags';
 import './FootballMatchesView.css';
@@ -29,6 +30,7 @@ function FootballMatchesView({ currentDate, onDateChange }: FootballMatchesViewP
   const [minVotePercent, setMinVotePercent] = useState(65);
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
   const [selectedEvent, setSelectedEvent] = useState<SofascoreEvent | null>(null);
+  const [predictionEvent, setPredictionEvent] = useState<SofascoreEvent | null>(null);
   const [refreshingMatchId, setRefreshingMatchId] = useState<number | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [includeAllLeagues, setIncludeAllLeagues] = useState(false);
@@ -285,6 +287,7 @@ function FootballMatchesView({ currentDate, onDateChange }: FootballMatchesViewP
                 matches={matches}
                 onMatchClick={handleMatchClick}
                 onRefreshMatch={handleRefreshMatch}
+                onPredictMatch={setPredictionEvent}
                 shouldHighlight={shouldHighlight}
                 parseOdds={parseOdds}
                 refreshingMatchId={refreshingMatchId}
@@ -292,6 +295,14 @@ function FootballMatchesView({ currentDate, onDateChange }: FootballMatchesViewP
             </details>
           ))}
         </div>
+      )}
+
+      {predictionEvent && (
+        <MatchPredictionDialog
+          event={predictionEvent}
+          sport="football"
+          onClose={() => setPredictionEvent(null)}
+        />
       )}
 
       {selectedEvent && (

@@ -104,6 +104,14 @@ data class DailyFootballMatchData(
     @Column(name = "away_red_cards")
     val awayRedCards: Int? = null,
 
+    /** Minutes played when the match was last read; null unless it was live at that moment. */
+    @Column(name = "live_elapsed_minutes")
+    val liveElapsedMinutes: Int? = null,
+
+    /** Minutes of normal time left at that same reading - see [lastUpdated] for how old it is. */
+    @Column(name = "live_minutes_remaining")
+    val liveMinutesRemaining: Int? = null,
+
     @Column(name = "last_updated", nullable = true)
     val lastUpdated: Instant? = null,
 

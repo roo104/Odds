@@ -5,13 +5,14 @@ import BetsView from './components/BetsView';
 import StandingsView from './components/StandingsView';
 import StatisticsView from './components/StatisticsView';
 import SidePanel from './components/SidePanel';
+import OddsHelp from './components/OddsHelp';
 import ConfigMenu, {ConfigSettings} from './components/ConfigMenu';
 import {footballApi, handballApi} from './services/api';
 import './App.css';
 
 function App() {
   const [sport, setSport] = useState<'football' | 'handball'>('football');
-  const [activeView, setActiveView] = useState<'matches' | 'bets' | 'standings' | 'statistics' | 'config'>('matches');
+  const [activeView, setActiveView] = useState<'matches' | 'bets' | 'standings' | 'statistics' | 'odds-help' | 'config'>('matches');
   const [sharedDate, setSharedDate] = useState(new Date());
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [currentConfig, setCurrentConfig] = useState<ConfigSettings | null>(null);
@@ -140,6 +141,8 @@ function App() {
         {activeView === 'bets' && <BetsView />}
 
         {activeView === 'statistics' && <StatisticsView />}
+
+        {activeView === 'odds-help' && <OddsHelp />}
 
         {activeView === 'config' && (
           <ConfigMenu

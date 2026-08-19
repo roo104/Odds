@@ -82,6 +82,7 @@ const FOOTBALL_API_BASE_URL = 'http://localhost:8080/api/football';
 const HANDBALL_API_BASE_URL = 'http://localhost:8080/api/handball';
 const BETS_API_BASE_URL = 'http://localhost:8080/api/bets';
 const STANDINGS_API_BASE_URL = 'http://localhost:8080/api/standings';
+const CLAUDE_API_BASE_URL = 'http://localhost:8080/api/claude';
 
 interface CreateBetRequest {
   eventId: number;
@@ -346,6 +347,70 @@ export const betsApi = {
       body: JSON.stringify({ odds }),
     });
     if (!response.ok) throw new Error('Failed to update odds');
+    return response.json();
+  },
+};
+
+export type ClaudeProviderType = 'CLI' | 'API';
+
+export interface ClaudeProviderInfo {
+  type: ClaudeProviderType;
+  available: boolean;
+  unavailableReason: string | null;
+}
+
+export interface ClaudeStatus {
+  active: ClaudeProviderType;
+  configuredDefault: ClaudeProviderType;
+  model: string;
+  providers: ClaudeProviderInfo[];
+}
+
+export interface MatchPrediction {
+  eventId: number;
+  homeTeam: string;
+  awayTeam: string;
+  statusDescription: string;
+  isLive: boolean;
+  hasStatistics: boolean;
+  prediction: string;
+  contextUsed: string;
+  provider: ClaudeProviderType;
+  model: string | null;
+  durationMs: number;
+  costUsd: number | null;
+}
+
+/** The backend answers with {error: "..."} on failure; surface that instead of a bare status code. */
+const claudeError = async (response: Response, fallback: string): Promise<never> => {
+  const body = await response.json().catch(() => null);
+  throw new Error(body?.error ?? `${fallback}: ${response.status}`);
+};
+
+export const claudeApi = {
+  getStatus: async (): Promise<ClaudeStatus> => {
+    const response = await fetch(`${CLAUDE_API_BASE_URL}/status`);
+    if (!response.ok) return claudeError(response, 'Failed to load Claude status');
+    return response.json();
+  },
+
+  setProvider: async (provider: ClaudeProviderType): Promise<ClaudeStatus> => {
+    const response = await fetch(`${CLAUDE_API_BASE_URL}/provider`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({provider}),
+    });
+    if (!response.ok) return claudeError(response, 'Failed to switch provider');
+    return response.json();
+  },
+
+  predictMatch: async (eventId: number, sport: 'football' | 'handball'): Promise<MatchPrediction> => {
+    const response = await fetch(`${CLAUDE_API_BASE_URL}/predict`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({eventId, sport}),
+    });
+    if (!response.ok) return claudeError(response, 'Prediction failed');
     return response.json();
   },
 };

@@ -5,6 +5,7 @@ import MatchesTable from './MatchesTable';
 import DateNavigation from './DateNavigation';
 import FilterControls from './FilterControls';
 import TeamDialog from './TeamDialog';
+import MatchPredictionDialog from './MatchPredictionDialog';
 import Toast from './Toast';
 import {getCountryFlag} from '../utils/countryFlags';
 import './FootballMatchesView.css';
@@ -29,6 +30,7 @@ function HandballMatchesView({ currentDate, onDateChange }: HandballMatchesViewP
   const [minVotePercent, setMinVotePercent] = useState(65);
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
   const [selectedEvent, setSelectedEvent] = useState<SofascoreEvent | null>(null);
+  const [predictionEvent, setPredictionEvent] = useState<SofascoreEvent | null>(null);
   const [refreshingMatchId, setRefreshingMatchId] = useState<number | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -264,6 +266,7 @@ function HandballMatchesView({ currentDate, onDateChange }: HandballMatchesViewP
                 matches={matches}
                 onMatchClick={handleMatchClick}
                 onRefreshMatch={handleRefreshMatch}
+                onPredictMatch={setPredictionEvent}
                 shouldHighlight={shouldHighlight}
                 parseOdds={parseOdds}
                 refreshingMatchId={refreshingMatchId}
@@ -271,6 +274,14 @@ function HandballMatchesView({ currentDate, onDateChange }: HandballMatchesViewP
             </details>
           ))}
         </div>
+      )}
+
+      {predictionEvent && (
+        <MatchPredictionDialog
+          event={predictionEvent}
+          sport="handball"
+          onClose={() => setPredictionEvent(null)}
+        />
       )}
 
       {selectedEvent && (

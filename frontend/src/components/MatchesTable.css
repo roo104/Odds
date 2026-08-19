@@ -257,3 +257,19 @@
 .odds-tooltip-footer strong {
   color: #e0e0e0;
 }
+
+.predict-match-button {
+  margin-left: 6px;
+  padding: 4px 8px;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  background: #252525;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.predict-match-button:hover {
+  background: #4a7c59;
+  border-color: #4a7c59;
+}

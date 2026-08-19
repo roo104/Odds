@@ -3,6 +3,7 @@ package jp.odds.service
 import io.netty.channel.ChannelOption
 import io.netty.handler.timeout.ReadTimeoutHandler
 import jp.odds.dto.*
+import jp.odds.entity.SportType
 import jp.odds.model.MatchBettingData
 import jp.odds.model.MatchDataWithResult
 import jp.odds.model.MatchWinningData
@@ -143,8 +144,28 @@ abstract class BaseSofascoreService(
     @Autowired
     private var environment: Environment? = null
 
+    /** The sport this service collects; also supplies the clock a live match is read against. */
+    protected abstract val sport: SportType
+
     /** Sport slug used in Sofascore paths, e.g. `football`. */
-    protected abstract val sportSlug: String
+    protected val sportSlug: String get() = sport.slug
+
+    /**
+     * The clock of a live match, read fresh from Sofascore. Null for anything not in progress, and
+     * for a live match whose clock the feed did not carry.
+     */
+    suspend fun getLiveClock(eventId: Long): LiveMatchClock? = readLiveClock(fetchEventDetails(eventId))
+
+    /** The clock as it stands in an event we already hold, without going back to Sofascore. */
+    protected fun readLiveClock(event: SofascoreEvent?): LiveMatchClock? = event?.let {
+        LiveMatchClock.read(
+            sport = sport,
+            statusType = it.status.type,
+            statusDescription = it.status.description,
+            statusTime = it.statusTime,
+            time = it.time
+        )
+    }
 
     /**
      * Sofascore's own top-competitions list for a country, which is what the withdrawn
@@ -735,6 +756,8 @@ abstract class BaseSofascoreService(
         ),
         season = scheduledEvent.season,
         vote = null,
+        time = scheduledEvent.time,
+        statusTime = scheduledEvent.statusTime,
         eventFilters = scheduledEvent.eventFilters,
         odds = null,
         voting = null,

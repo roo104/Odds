@@ -1,5 +1,6 @@
 package jp.odds.service
 
+import jp.odds.entity.SportType
 import jp.odds.repository.MatchOddsHistoryRepository
 import jp.odds.repository.MatchVotesHistoryRepository
 import jp.odds.service.BaseSofascoreService.TrackedLeague
@@ -89,7 +90,7 @@ class EventDiscoveryPathTest {
         odds: MatchOddsHistoryRepository,
         votes: MatchVotesHistoryRepository
     ) : BaseSofascoreService(builder, odds, votes) {
-        override val sportSlug: String = "football"
+        override val sport: SportType = SportType.Football
 
         suspend fun discover(date: LocalDate, leagues: List<TrackedLeague>, includeAll: Boolean = false) =
             fetchEventsForDate(date, leagues, includeAll)

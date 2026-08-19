@@ -4,6 +4,7 @@ import jp.odds.dto.ProfitabilityResponse
 import jp.odds.dto.WinningMatchStatistics
 import jp.odds.dto.WinningMatchStatisticsByLeague
 import jp.odds.entity.DailyFootballMatchData
+import jp.odds.entity.SportType
 import jp.odds.repository.DailyFootballMatchDataRepository
 import jp.odds.repository.MatchOddsHistoryRepository
 import jp.odds.repository.MatchVotesHistoryRepository
@@ -29,7 +30,7 @@ class FootballService(
         const val LEAGUE_SEED_LOOKBACK_DAYS = 400L
     }
 
-    override val sportSlug: String = "football"
+    override val sport: SportType = SportType.Football
 
     suspend fun getTodayMatches(): List<SofascoreEvent> {
         val tomorrow = LocalDate.now().plusDays(1)
@@ -102,6 +103,9 @@ class FootballService(
         val isMatchFinished = eventDetails?.status?.type?.lowercase() == "finished" ||
                 eventDetails?.status?.description?.lowercase() in listOf("finished", "ended", "full time")
         val statistics = if (isMatchFinished) fetchEventStatistics(eventId) else null
+        // Sofascore drops the clock the moment a match ends, so a null reading off a fetch that
+        // did land means "no longer live"; only a failed fetch leaves the last one standing.
+        val liveClock = readLiveClock(eventDetails)
 
         if (odds == null && voting == null && eventDetails == null) {
             logger.warn("No data fetched for match $eventId")
@@ -135,6 +139,8 @@ class FootballService(
             votingTotal = voting?.total,
             statusType = eventDetails?.status?.type ?: existingData.statusType,
             statusDescription = eventDetails?.status?.description ?: existingData.statusDescription,
+            liveElapsedMinutes = if (eventDetails != null) liveClock?.elapsedMinutes else existingData.liveElapsedMinutes,
+            liveMinutesRemaining = if (eventDetails != null) liveClock?.minutesRemaining else existingData.liveMinutesRemaining,
             lastUpdated = now
         )
         withContext(Dispatchers.IO) {
@@ -261,6 +267,7 @@ class FootballService(
                 return@mapNotNull null
             }
             val stats = eventStatistics[event.id]
+            val clock = readLiveClock(event)
             DailyFootballMatchData(
                 id = existing?.id,
                 matchDate = existing?.matchDate ?: matchDate,
@@ -291,6 +298,8 @@ class FootballService(
                 votingTotal = event.voting?.total,
                 statusType = event.status.type,
                 statusDescription = event.status.description,
+                liveElapsedMinutes = clock?.elapsedMinutes,
+                liveMinutesRemaining = clock?.minutesRemaining,
                 lastUpdated = now,
                 isTopLeague = event.isTopLeague ?: true
             )

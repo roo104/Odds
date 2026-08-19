@@ -46,6 +46,14 @@ function SidePanel({ activeView, onViewChange }: SidePanelProps) {
         </button>
         <button
           type="button"
+          className={`nav-item ${activeView === 'odds-help' ? 'active' : ''}`}
+          onClick={() => onViewChange('odds-help')}
+        >
+          <span className="nav-icon">❓</span>
+          <span className="nav-label">Odds Help</span>
+        </button>
+        <button
+          type="button"
           className={`nav-item ${activeView === 'config' ? 'active' : ''}`}
           onClick={() => onViewChange('config')}
         >

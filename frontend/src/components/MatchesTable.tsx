@@ -34,12 +34,13 @@ interface MatchesTableProps {
   matches: SofascoreEvent[];
   onMatchClick: (event: SofascoreEvent) => void;
   onRefreshMatch: (eventId: number) => void;
+  onPredictMatch: (event: SofascoreEvent) => void;
   shouldHighlight: (event: SofascoreEvent) => boolean;
   parseOdds: (fractionalOdds?: string) => number;
   refreshingMatchId: number | null;
 }
 
-function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, parseOdds, refreshingMatchId }: MatchesTableProps) {
+function MatchesTable({ matches, onMatchClick, onRefreshMatch, onPredictMatch, shouldHighlight, parseOdds, refreshingMatchId }: MatchesTableProps) {
   const [oddsTooltip, setOddsTooltip] = React.useState<OddsTooltipState | null>(null);
 
   const formatDateTime = (timestamp: number) => {
@@ -320,6 +321,15 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, shouldHighlight, 
                     title="Refresh this match"
                   >
                     {refreshingMatchId === match.id ? '↻' : '⟳'}
+                  </button>
+                  <button
+                    className="predict-match-button"
+                    onClick={(e) => { e.stopPropagation(); onPredictMatch(match); }}
+                    title={match.status.type === 'inprogress'
+                      ? 'Predict the outcome from live statistics and odds'
+                      : 'Predict the outcome from odds and votes'}
+                  >
+                    ✨
                   </button>
                 </td>
               </tr>

@@ -4,6 +4,7 @@ import jp.odds.dto.ProfitabilityResponse
 import jp.odds.dto.WinningMatchStatistics
 import jp.odds.dto.WinningMatchStatisticsByLeague
 import jp.odds.entity.DailyHandballMatchData
+import jp.odds.entity.SportType
 import jp.odds.repository.DailyHandballMatchDataRepository
 import jp.odds.repository.MatchOddsHistoryRepository
 import jp.odds.repository.MatchVotesHistoryRepository
@@ -29,7 +30,7 @@ class HandballService(
         const val LEAGUE_SEED_LOOKBACK_DAYS = 400L
     }
 
-    override val sportSlug: String = "handball"
+    override val sport: SportType = SportType.Handball
 
     suspend fun getTodayMatches(): List<SofascoreEvent> {
         val tomorrow = LocalDate.now().plusDays(1)
@@ -85,6 +86,9 @@ class HandballService(
         val odds = fetchOddsForEvent(eventId)
         val voting = fetchVotingForEvent(eventId)
         val now = Instant.now()
+        // Sofascore drops the clock the moment a match ends, so a null reading off a fetch that
+        // did land means "no longer live"; only a failed fetch leaves the last one standing.
+        val liveClock = readLiveClock(eventDetails)
 
         saveOddsHistory(eventId, odds, now)
         saveVotesHistory(eventId, voting, now)
@@ -117,6 +121,8 @@ class HandballService(
             votingTotal = voting?.total,
             statusType = eventDetails?.status?.type ?: existingData.statusType,
             statusDescription = eventDetails?.status?.description ?: existingData.statusDescription,
+            liveElapsedMinutes = if (eventDetails != null) liveClock?.elapsedMinutes else existingData.liveElapsedMinutes,
+            liveMinutesRemaining = if (eventDetails != null) liveClock?.minutesRemaining else existingData.liveMinutesRemaining,
             lastUpdated = now
         )
         withContext(Dispatchers.IO) {
@@ -227,6 +233,7 @@ class HandballService(
                 )
                 return@mapNotNull null
             }
+            val clock = readLiveClock(event)
             DailyHandballMatchData(
                 id = existing?.id,
                 matchDate = existing?.matchDate ?: matchDate,
@@ -253,6 +260,8 @@ class HandballService(
                 votingTotal = event.voting?.total,
                 statusType = event.status.type,
                 statusDescription = event.status.description,
+                liveElapsedMinutes = clock?.elapsedMinutes,
+                liveMinutesRemaining = clock?.minutesRemaining,
                 lastUpdated = now
             )
         }
