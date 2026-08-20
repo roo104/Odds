@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react';
-import {handballApi} from '../services/api';
+import {claudeApi, handballApi, StoredMatchPrediction} from '../services/api';
 import {SofascoreEvent} from '../types';
 import MatchesTable from './MatchesTable';
 import DateNavigation from './DateNavigation';
@@ -32,11 +32,25 @@ function HandballMatchesView({ currentDate, onDateChange }: HandballMatchesViewP
   const [selectedEvent, setSelectedEvent] = useState<SofascoreEvent | null>(null);
   const [predictionEvent, setPredictionEvent] = useState<SofascoreEvent | null>(null);
   const [refreshingMatchId, setRefreshingMatchId] = useState<number | null>(null);
+  const [predictions, setPredictions] = useState<Record<number, StoredMatchPrediction>>({});
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   useEffect(() => {
     loadMatches(currentDate, false);
+    loadPredictions(currentDate);
   }, [currentDate]);
+
+  // Predictions are stored per match rather than per day, so they survive a reload and a match
+  // keeps the call Claude made for it until someone asks again.
+  const loadPredictions = async (date: Date) => {
+    try {
+      const dateStr = date.toISOString().split('T')[0];
+      setPredictions(await claudeApi.getPredictionsByDate('handball', dateStr));
+    } catch (error) {
+      console.error('Failed to load stored predictions:', error);
+      setPredictions({});
+    }
+  };
 
   const showToast = (message: string, type: 'success' | 'error' | 'info') => {
     const id = Date.now();
@@ -270,6 +284,7 @@ function HandballMatchesView({ currentDate, onDateChange }: HandballMatchesViewP
                 shouldHighlight={shouldHighlight}
                 parseOdds={parseOdds}
                 refreshingMatchId={refreshingMatchId}
+                predictions={predictions}
               />
             </details>
           ))}
@@ -280,6 +295,7 @@ function HandballMatchesView({ currentDate, onDateChange }: HandballMatchesViewP
         <MatchPredictionDialog
           event={predictionEvent}
           sport="handball"
+          onPredicted={() => loadPredictions(currentDate)}
           onClose={() => setPredictionEvent(null)}
         />
       )}

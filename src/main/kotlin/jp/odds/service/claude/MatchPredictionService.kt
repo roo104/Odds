@@ -1,12 +1,11 @@
 package jp.odds.service.claude
 
-import jp.odds.dto.ClaudeAskRequest
-import jp.odds.dto.MatchPredictionRequest
-import jp.odds.dto.MatchPredictionResponse
-import jp.odds.dto.MatchStatisticsResponse
+import jp.odds.dto.*
+import jp.odds.entity.MatchPrediction
 import jp.odds.entity.SportType
 import jp.odds.repository.DailyFootballMatchDataRepository
 import jp.odds.repository.DailyHandballMatchDataRepository
+import jp.odds.repository.MatchPredictionRepository
 import jp.odds.service.FootballService
 import jp.odds.service.HandballService
 import kotlinx.coroutines.Dispatchers
@@ -14,6 +13,7 @@ import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -30,10 +30,20 @@ class MatchPredictionService(
     private val footballRepository: DailyFootballMatchDataRepository,
     private val handballRepository: DailyHandballMatchDataRepository,
     private val footballService: FootballService,
-    private val handballService: HandballService
+    private val handballService: HandballService,
+    private val matchPredictionRepository: MatchPredictionRepository
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
+
+    private companion object {
+        /** The closing line the prompt asks for, e.g. `PROBABILITIES: home=45 draw=25 away=30`. */
+        val PROBABILITY_LINE = Regex("""^\s*PROBABILITIES\s*:.*$""", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
+
+        fun outcomeShare(line: String, outcome: String): Double? =
+            Regex("""$outcome\s*[=:]\s*(\d+(?:[.,]\d+)?)""", RegexOption.IGNORE_CASE)
+                .find(line)?.groupValues?.get(1)?.replace(',', '.')?.toDoubleOrNull()
+    }
 
     suspend fun predict(request: MatchPredictionRequest): MatchPredictionResponse {
         val sport = SportType.entries.firstOrNull { it.name.equals(request.sport, ignoreCase = true) }
@@ -61,6 +71,43 @@ class MatchPredictionService(
             ClaudeAskRequest(prompt = buildPrompt(facts, context), provider = request.provider)
         )
 
+        // The percentages live in a closing line meant for us, not for the reader: pull them out
+        // for storage and drop the line before the prose is shown.
+        val marketOdds = facts.decimalOdds()
+        val probabilities = parseProbabilities(answer.text)
+        val prose = PROBABILITY_LINE.replace(answer.text, "").trim()
+        val predictedAt = Instant.now()
+
+        val stored = MatchPrediction(
+            eventId = facts.eventId,
+            sport = sport,
+            startTimestamp = facts.startTimestamp,
+            homeTeamName = facts.homeTeam,
+            awayTeamName = facts.awayTeam,
+            statusDescription = facts.statusDescription,
+            wasLive = facts.isLive,
+            hadStatistics = statLines.isNotEmpty(),
+            probabilityHome = probabilities?.home,
+            probabilityDraw = probabilities?.draw,
+            probabilityAway = probabilities?.away,
+            predictedOutcome = topOutcome(probabilities),
+            oddsHome = marketOdds["Home"],
+            oddsDraw = marketOdds["Draw"],
+            oddsAway = marketOdds["Away"],
+            homeScore = facts.homeScore,
+            awayScore = facts.awayScore,
+            prediction = prose,
+            provider = answer.provider,
+            model = answer.model,
+            durationMs = answer.durationMs,
+            costUsd = answer.costUsd,
+            createdAt = predictedAt
+        )
+        // A prediction that cannot be filed is still a prediction worth showing, so a failure here
+        // must not swallow the answer the user is waiting on.
+        runCatching { withContext(Dispatchers.IO) { matchPredictionRepository.save(stored) } }
+            .onFailure { log.warn("Could not store prediction for event {}", facts.eventId, it) }
+
         return MatchPredictionResponse(
             eventId = facts.eventId,
             homeTeam = facts.homeTeam,
@@ -68,13 +115,73 @@ class MatchPredictionService(
             statusDescription = facts.statusDescription,
             isLive = facts.isLive,
             hasStatistics = statLines.isNotEmpty(),
-            prediction = answer.text,
+            prediction = prose,
             contextUsed = context,
+            probabilities = probabilities,
+            predictedOutcome = stored.predictedOutcome,
+            predictedAt = predictedAt.epochSecond,
             provider = answer.provider,
             model = answer.model,
             durationMs = answer.durationMs,
             costUsd = answer.costUsd
         )
+    }
+
+    /** The latest prediction per match for a day, for the matches table to show on hover. */
+    suspend fun storedPredictions(sportName: String, date: LocalDate): List<StoredMatchPrediction> {
+        val sport = SportType.entries.firstOrNull { it.name.equals(sportName, ignoreCase = true) }
+            ?: throw IllegalArgumentException("Unknown sport '$sportName'")
+
+        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toEpochSecond()
+        val endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toEpochSecond()
+
+        val predictions = withContext(Dispatchers.IO) {
+            matchPredictionRepository
+                .findBySportAndStartTimestampBetweenOrderByCreatedAtAsc(sport, startOfDay, endOfDay)
+        }
+        // Oldest first, so the last row per event is the newest reading of that match.
+        return predictions.associateBy { it.eventId }.values.map { it.toDto() }
+    }
+
+    private fun MatchPrediction.toDto() = StoredMatchPrediction(
+        eventId = eventId,
+        sport = sport.name,
+        predictedAt = createdAt.epochSecond,
+        statusDescription = statusDescription,
+        wasLive = wasLive,
+        hadStatistics = hadStatistics,
+        probabilities = if (probabilityHome == null && probabilityDraw == null && probabilityAway == null) null
+        else PredictionProbabilities(probabilityHome, probabilityDraw, probabilityAway),
+        predictedOutcome = predictedOutcome,
+        marketOdds = if (oddsHome == null && oddsDraw == null && oddsAway == null) null
+        else PredictionOdds(oddsHome, oddsDraw, oddsAway),
+        homeScore = homeScore,
+        awayScore = awayScore,
+        prediction = prediction,
+        provider = provider,
+        model = model
+    )
+
+    /** Reads the closing `PROBABILITIES:` line; null when Claude answered without one. */
+    private fun parseProbabilities(text: String): PredictionProbabilities? {
+        val line = PROBABILITY_LINE.findAll(text).lastOrNull()?.value ?: return null
+        val home = outcomeShare(line, "home")
+        val draw = outcomeShare(line, "draw")
+        val away = outcomeShare(line, "away")
+        if (home == null && draw == null && away == null) {
+            log.warn("Prediction ended with an unreadable probability line: {}", line.trim())
+            return null
+        }
+        return PredictionProbabilities(home, draw, away)
+    }
+
+    private fun topOutcome(probabilities: PredictionProbabilities?): String? {
+        val ranked = listOfNotNull(
+            probabilities?.home?.let { "HOME" to it },
+            probabilities?.draw?.let { "DRAW" to it },
+            probabilities?.away?.let { "AWAY" to it }
+        )
+        return ranked.maxByOrNull { it.second }?.first
     }
 
     /**
@@ -241,6 +348,14 @@ class MatchPredictionService(
             "Be concrete and brief - under 200 words. You have only the numbers above: no team news, " +
                 "no form guide, no head-to-head. Say so where it limits the call rather than inventing detail."
         )
+        appendLine()
+        // The percentages are stored and shown next to the market's, so they have to come back in a
+        // shape that can be read without guessing at prose.
+        appendLine(
+            "End with one final line, nothing after it, exactly in this form - whole numbers " +
+                "summing to 100, the same percentages you gave in point 1:"
+        )
+        appendLine("PROBABILITIES: home=45 draw=25 away=30")
     }
 
     /** Sofascore's `ALL` period is the whole-match view; the per-half breakdowns add noise here. */

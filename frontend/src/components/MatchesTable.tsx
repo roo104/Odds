@@ -1,4 +1,5 @@
 import {SofascoreEvent} from '../types';
+import {PredictedOutcome, StoredMatchPrediction} from '../services/api';
 import './MatchesTable.css';
 import * as React from "react";
 import {createPortal} from 'react-dom';
@@ -24,8 +25,22 @@ interface OddsTooltipState {
   placement: 'above' | 'below';
 }
 
-// Rough tooltip height, only used to decide whether it still fits below the row
+interface PredictionTooltipState {
+  prediction: StoredMatchPrediction;
+  x: number;
+  y: number;
+  placement: 'above' | 'below';
+}
+
+// Rough tooltip heights, only used to decide whether they still fit below the row
 const ODDS_TOOLTIP_HEIGHT = 170;
+const PREDICTION_TOOLTIP_HEIGHT = 260;
+
+const OUTCOME_LABELS: Record<PredictedOutcome, string> = {
+  HOME: 'Home win',
+  DRAW: 'Draw',
+  AWAY: 'Away win',
+};
 
 // Bisection steps for Shin's insider share; 60 halvings is far past double precision
 const SHIN_ITERATIONS = 60;
@@ -38,10 +53,13 @@ interface MatchesTableProps {
   shouldHighlight: (event: SofascoreEvent) => boolean;
   parseOdds: (fractionalOdds?: string) => number;
   refreshingMatchId: number | null;
+  /** Latest stored Claude prediction per event id; matches without one simply have no entry. */
+  predictions?: Record<number, StoredMatchPrediction>;
 }
 
-function MatchesTable({ matches, onMatchClick, onRefreshMatch, onPredictMatch, shouldHighlight, parseOdds, refreshingMatchId }: MatchesTableProps) {
+function MatchesTable({ matches, onMatchClick, onRefreshMatch, onPredictMatch, shouldHighlight, parseOdds, refreshingMatchId, predictions }: MatchesTableProps) {
   const [oddsTooltip, setOddsTooltip] = React.useState<OddsTooltipState | null>(null);
+  const [predictionTooltip, setPredictionTooltip] = React.useState<PredictionTooltipState | null>(null);
 
   const formatDateTime = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
@@ -203,6 +221,46 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, onPredictMatch, s
     setOddsTooltip(null);
   };
 
+  // A prediction is shown against the row it belongs to, anchored to the team names rather than
+  // the cursor so it does not chase the pointer across the row.
+  const handleRowEnter = (e: React.MouseEvent<HTMLTableRowElement>, match: SofascoreEvent) => {
+    const prediction = predictions?.[match.id];
+    if (!prediction) return;
+
+    const cells = e.currentTarget.querySelectorAll('td.team-cell');
+    if (cells.length === 0) return;
+
+    const first = cells[0].getBoundingClientRect();
+    const last = cells[cells.length - 1].getBoundingClientRect();
+    const placement = last.bottom + PREDICTION_TOOLTIP_HEIGHT > window.innerHeight ? 'above' : 'below';
+
+    setPredictionTooltip({
+      prediction,
+      x: (first.left + last.right) / 2,
+      y: placement === 'below' ? last.bottom + 8 : first.top - 8,
+      placement,
+    });
+  };
+
+  /** Claude's percentage as a decimal price, so it reads on the same scale as the bookmaker's. */
+  const fairOdds = (percent: number | null | undefined): number | null =>
+    percent != null && percent > 0 ? 100 / percent : null;
+
+  const predictionRows = (prediction: StoredMatchPrediction) =>
+    ([
+      { key: 'HOME' as PredictedOutcome, label: 'Home', percent: prediction.probabilities?.home, book: prediction.marketOdds?.home },
+      { key: 'DRAW' as PredictedOutcome, label: 'Draw', percent: prediction.probabilities?.draw, book: prediction.marketOdds?.draw },
+      { key: 'AWAY' as PredictedOutcome, label: 'Away', percent: prediction.probabilities?.away, book: prediction.marketOdds?.away },
+    ]).map((row) => {
+      const fair = fairOdds(row.percent);
+      return {
+        ...row,
+        fair,
+        // The bookmaker paying more than Claude's own price is what value looks like here.
+        isValue: fair != null && row.book != null && row.book > fair,
+      };
+    });
+
   const getTournamentFlag = (match: SofascoreEvent): string | null => {
     if (match.tournament.category.name === 'Europe') {
       return '🇪🇺';
@@ -261,13 +319,15 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, onPredictMatch, s
               <tr
                 key={match.id}
                 onClick={(e) => handleRowClick(e, match)}
+                onMouseEnter={(e) => handleRowEnter(e, match)}
+                onMouseLeave={() => setPredictionTooltip(null)}
                 className={shouldHighlight(match) ? 'highlight-row' : ''}
               >
                 <td>{formatDateTime(match.startTimestamp)}</td>
-                <td className={`group-start ${matchResult === 'home-win' ? 'winner' : matchResult === 'away-win' ? 'loser' : matchResult === 'draw' ? 'draw' : ''}`}>
+                <td className={`team-cell group-start ${matchResult === 'home-win' ? 'winner' : matchResult === 'away-win' ? 'loser' : matchResult === 'draw' ? 'draw' : ''}`}>
                   {match.homeTeam.name}
                 </td>
-                <td className={matchResult === 'away-win' ? 'winner' : matchResult === 'home-win' ? 'loser' : matchResult === 'draw' ? 'draw' : ''}>
+                <td className={`team-cell ${matchResult === 'away-win' ? 'winner' : matchResult === 'home-win' ? 'loser' : matchResult === 'draw' ? 'draw' : ''}`}>
                   {match.awayTeam.name}
                 </td>
                 <td className="group-start">
@@ -323,11 +383,13 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, onPredictMatch, s
                     {refreshingMatchId === match.id ? '↻' : '⟳'}
                   </button>
                   <button
-                    className="predict-match-button"
+                    className={`predict-match-button ${predictions?.[match.id] ? 'has-prediction' : ''}`}
                     onClick={(e) => { e.stopPropagation(); onPredictMatch(match); }}
-                    title={match.status.type === 'inprogress'
-                      ? 'Predict the outcome from live statistics and odds'
-                      : 'Predict the outcome from odds and votes'}
+                    title={predictions?.[match.id]
+                      ? 'Claude has called this one - hover the row to see it, click to ask again'
+                      : match.status.type === 'inprogress'
+                        ? 'Predict the outcome from live statistics and odds'
+                        : 'Predict the outcome from odds and votes'}
                   >
                     ✨
                   </button>
@@ -371,6 +433,72 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, onPredictMatch, s
             <span>Implied total <strong>{formatPercent(oddsTooltip.breakdown.impliedTotal)}</strong></span>
             <span>Margin <strong>{formatPercent(oddsTooltip.breakdown.margin)}</strong></span>
             <span>Insider z <strong>{formatPercent(oddsTooltip.breakdown.insiderShare)}</strong></span>
+          </div>
+        </div>,
+        document.body
+      )}
+      {predictionTooltip && !oddsTooltip && createPortal(
+        <div
+          className={`prediction-tooltip prediction-tooltip-${predictionTooltip.placement}`}
+          style={{ left: predictionTooltip.x, top: predictionTooltip.y }}
+        >
+          <div className="prediction-tooltip-title">
+            <span>Claude&rsquo;s call &middot; {formatLastUpdated(predictionTooltip.prediction.predictedAt)}</span>
+            {predictionTooltip.prediction.wasLive && (
+              <span className="prediction-tooltip-live">
+                Live · {predictionTooltip.prediction.statusDescription}
+                {predictionTooltip.prediction.homeScore != null &&
+                  ` ${predictionTooltip.prediction.homeScore}-${predictionTooltip.prediction.awayScore ?? 0}`}
+              </span>
+            )}
+          </div>
+
+          {predictionTooltip.prediction.probabilities ? (
+            <table className="odds-tooltip-table">
+              <thead>
+                <tr>
+                  <th />
+                  <th>Claude</th>
+                  <th>AI odds</th>
+                  <th>Book</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {predictionRows(predictionTooltip.prediction).map((row) => (
+                  <tr
+                    key={row.key}
+                    className={predictionTooltip.prediction.predictedOutcome === row.key ? 'prediction-tooltip-top' : ''}
+                  >
+                    <th>{row.label}</th>
+                    <td>{row.percent != null ? `${row.percent.toFixed(0)}%` : '-'}</td>
+                    <td className="odds-tooltip-fair">{row.fair != null ? row.fair.toFixed(2) : '-'}</td>
+                    <td className={row.isValue ? 'prediction-tooltip-value' : ''}>
+                      {row.book != null ? row.book.toFixed(2) : '-'}
+                    </td>
+                    <td className="odds-tooltip-bar-cell">
+                      <span className="odds-tooltip-bar" style={{ width: `${row.percent ?? 0}%` }} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="prediction-tooltip-note">Claude answered without percentages this time.</div>
+          )}
+
+          {predictionTooltip.prediction.predictedOutcome && (
+            <div className="prediction-tooltip-call">
+              Call: <strong>{OUTCOME_LABELS[predictionTooltip.prediction.predictedOutcome]}</strong>
+              <span className="prediction-tooltip-hint"> · green price pays more than Claude&rsquo;s own</span>
+            </div>
+          )}
+
+          <p className="prediction-tooltip-text">{predictionTooltip.prediction.prediction}</p>
+
+          <div className="odds-tooltip-footer">
+            <span>{predictionTooltip.prediction.model ?? predictionTooltip.prediction.provider}</span>
+            <span>Odds shown are the prices at the time of the call</span>
           </div>
         </div>,
         document.body

@@ -366,6 +366,22 @@ export interface ClaudeStatus {
   providers: ClaudeProviderInfo[];
 }
 
+/** Claude's own percentages for the three outcomes, 0-100. */
+export interface PredictionProbabilities {
+  home: number | null;
+  draw: number | null;
+  away: number | null;
+}
+
+/** Decimal prices - the market's, at the moment a prediction was made. */
+export interface PredictionOdds {
+  home: number | null;
+  draw: number | null;
+  away: number | null;
+}
+
+export type PredictedOutcome = 'HOME' | 'DRAW' | 'AWAY';
+
 export interface MatchPrediction {
   eventId: number;
   homeTeam: string;
@@ -375,10 +391,33 @@ export interface MatchPrediction {
   hasStatistics: boolean;
   prediction: string;
   contextUsed: string;
+  probabilities: PredictionProbabilities | null;
+  predictedOutcome: PredictedOutcome | null;
+  /** Epoch seconds. */
+  predictedAt: number;
   provider: ClaudeProviderType;
   model: string | null;
   durationMs: number;
   costUsd: number | null;
+}
+
+/** A prediction as it was stored, shown on hover in the matches table. */
+export interface StoredMatchPrediction {
+  eventId: number;
+  sport: string;
+  /** Epoch seconds. */
+  predictedAt: number;
+  statusDescription: string;
+  wasLive: boolean;
+  hadStatistics: boolean;
+  probabilities: PredictionProbabilities | null;
+  predictedOutcome: PredictedOutcome | null;
+  marketOdds: PredictionOdds | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  prediction: string;
+  provider: ClaudeProviderType;
+  model: string | null;
 }
 
 /** The backend answers with {error: "..."} on failure; surface that instead of a bare status code. */
@@ -412,5 +451,16 @@ export const claudeApi = {
     });
     if (!response.ok) return claudeError(response, 'Prediction failed');
     return response.json();
+  },
+
+  /** Latest stored prediction per match kicking off on a date, keyed by event id. */
+  getPredictionsByDate: async (
+    sport: 'football' | 'handball',
+    date: string,
+  ): Promise<Record<number, StoredMatchPrediction>> => {
+    const response = await fetch(`${CLAUDE_API_BASE_URL}/predictions?sport=${sport}&date=${date}`);
+    if (!response.ok) return claudeError(response, 'Failed to load stored predictions');
+    const stored: StoredMatchPrediction[] = await response.json();
+    return Object.fromEntries(stored.map((prediction) => [prediction.eventId, prediction]));
   },
 };

@@ -41,6 +41,20 @@ data class MatchPredictionRequest(
     val provider: ClaudeProviderType? = null
 )
 
+/** Claude's own percentages for the three outcomes, 0-100. Null where it did not give one. */
+data class PredictionProbabilities(
+    val home: Double?,
+    val draw: Double?,
+    val away: Double?
+)
+
+/** Decimal prices, either the market's or the ones Claude's percentages imply. */
+data class PredictionOdds(
+    val home: Double?,
+    val draw: Double?,
+    val away: Double?
+)
+
 data class MatchPredictionResponse(
     val eventId: Long,
     val homeTeam: String,
@@ -52,8 +66,34 @@ data class MatchPredictionResponse(
     val prediction: String,
     /** The facts the prediction was built from, so the UI can show what Claude actually saw. */
     val contextUsed: String,
+    val probabilities: PredictionProbabilities?,
+    /** HOME, DRAW or AWAY - whichever probability is highest; null without percentages. */
+    val predictedOutcome: String?,
+    /** When this prediction was made, epoch seconds. */
+    val predictedAt: Long,
     val provider: ClaudeProviderType,
     val model: String?,
     val durationMs: Long,
     val costUsd: Double?
+)
+
+/**
+ * A prediction as it was stored, for the matches table to show on hover. Carries the odds it was
+ * made against, so Claude's percentages can be read next to the market they were arguing with.
+ */
+data class StoredMatchPrediction(
+    val eventId: Long,
+    val sport: String,
+    val predictedAt: Long,
+    val statusDescription: String,
+    val wasLive: Boolean,
+    val hadStatistics: Boolean,
+    val probabilities: PredictionProbabilities?,
+    val predictedOutcome: String?,
+    val marketOdds: PredictionOdds?,
+    val homeScore: Int?,
+    val awayScore: Int?,
+    val prediction: String,
+    val provider: ClaudeProviderType,
+    val model: String?
 )

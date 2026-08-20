@@ -149,3 +149,55 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Claude's own percentages, pulled out of the answer and shown as prices for comparison */
+.prediction-probabilities {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  background: #1c1c1c;
+}
+
+.prediction-probability {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  padding: 5px 0;
+  color: #c0c0c0;
+  font-size: 13px;
+}
+
+.prediction-probability.top {
+  color: #fff;
+  font-weight: 600;
+}
+
+.prediction-probability-value {
+  min-width: 40px;
+  text-align: right;
+}
+
+.prediction-probability-odds {
+  min-width: 46px;
+  text-align: right;
+  color: #81c784;
+}
+
+.prediction-probability-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  max-width: 100%;
+  background: #4a7c59;
+}
+
+.prediction-probability-legend {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #333;
+  color: #8a8a8a;
+  font-size: 11px;
+}
