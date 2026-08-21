@@ -46,6 +46,10 @@ class MatchPrediction(
     @Column(name = "had_statistics", nullable = false)
     var hadStatistics: Boolean = false,
 
+    /** Team news headlines fed into the prompt; 0 when there were none to give. */
+    @Column(name = "team_news_headlines", nullable = false)
+    var teamNewsHeadlines: Int = 0,
+
     /** Claude's own percentages, 0-100; null when the answer came back without them. */
     @Column(name = "probability_home")
     var probabilityHome: Double? = null,

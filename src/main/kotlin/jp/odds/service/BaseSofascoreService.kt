@@ -168,6 +168,16 @@ abstract class BaseSofascoreService(
     }
 
     /**
+     * Carries the clock of a freshly fetched event onto the event itself, so a match read straight
+     * from Sofascore reaches the UI with the same minute as one read back out of the database.
+     */
+    protected fun stampLiveClock(event: SofascoreEvent) {
+        val clock = readLiveClock(event)
+        event.liveElapsedMinutes = clock?.elapsedMinutes
+        event.liveMinutesRemaining = clock?.minutesRemaining
+    }
+
+    /**
      * Sofascore's own top-competitions list for a country, which is what the withdrawn
      * scheduled-events feed used to flag via `eventFilters.level = top-competitions`.
      *
@@ -791,7 +801,9 @@ abstract class BaseSofascoreService(
         votingAway: Int?,
         votingTotal: Int?,
         lastUpdated: Instant?,
-        isTopLeague: Boolean?
+        isTopLeague: Boolean?,
+        liveElapsedMinutes: Int? = null,
+        liveMinutesRemaining: Int? = null
     ): SofascoreEvent = SofascoreEvent(
         id = eventId,
         startTimestamp = startTimestamp,
@@ -837,7 +849,9 @@ abstract class BaseSofascoreService(
             )
         } else null,
         lastUpdated = lastUpdated?.epochSecond ?: 0,
-        isTopLeague = isTopLeague
+        isTopLeague = isTopLeague,
+        liveElapsedMinutes = liveElapsedMinutes,
+        liveMinutesRemaining = liveMinutesRemaining
     )
 
     protected fun parseOdds(fractionalOdds: String): Double = try {

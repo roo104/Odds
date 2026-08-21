@@ -14,6 +14,10 @@ export interface SofascoreEvent {
   awayFormScore?: number;
   lastUpdated?: number;
   isTopLeague?: boolean;
+  /** Minutes played when the clock was last read; only set while the match is live. */
+  liveElapsedMinutes?: number;
+  /** Minutes of normal time left at that same reading; `lastUpdated` says how old it is. */
+  liveMinutesRemaining?: number;
 }
 
 export interface Team {

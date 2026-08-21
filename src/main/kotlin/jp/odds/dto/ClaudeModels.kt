@@ -63,6 +63,8 @@ data class MatchPredictionResponse(
     val isLive: Boolean,
     /** True when live statistics were available and fed into the prompt. */
     val hasStatistics: Boolean,
+    /** Team news headlines fed into the prompt; 0 when there were none to give. */
+    val teamNewsHeadlines: Int,
     val prediction: String,
     /** The facts the prediction was built from, so the UI can show what Claude actually saw. */
     val contextUsed: String,
@@ -88,6 +90,7 @@ data class StoredMatchPrediction(
     val statusDescription: String,
     val wasLive: Boolean,
     val hadStatistics: Boolean,
+    val teamNewsHeadlines: Int,
     val probabilities: PredictionProbabilities?,
     val predictedOutcome: String?,
     val marketOdds: PredictionOdds?,

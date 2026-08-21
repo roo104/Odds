@@ -3,6 +3,8 @@ import './FilterControls.css';
 interface FilterControlsProps {
   filterNotStarted: boolean;
   setFilterNotStarted: (value: boolean) => void;
+  filterLive: boolean;
+  setFilterLive: (value: boolean) => void;
   filterMatchCriteria: boolean;
   setFilterMatchCriteria: (value: boolean) => void;
   minOdds: number;
@@ -16,6 +18,8 @@ interface FilterControlsProps {
 function FilterControls({
   filterNotStarted,
   setFilterNotStarted,
+  filterLive,
+  setFilterLive,
   filterMatchCriteria,
   setFilterMatchCriteria,
   minOdds,
@@ -32,9 +36,24 @@ function FilterControls({
           <input
             type="checkbox"
             checked={filterNotStarted}
-            onChange={(e) => setFilterNotStarted(e.target.checked)}
+            onChange={(e) => {
+              setFilterNotStarted(e.target.checked);
+              // Nothing is both not started and live, so the two never apply together
+              if (e.target.checked) setFilterLive(false);
+            }}
           />
-          Show only Not Started matches
+          Show only not started matches
+        </label>
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={filterLive}
+            onChange={(e) => {
+              setFilterLive(e.target.checked);
+              if (e.target.checked) setFilterNotStarted(false);
+            }}
+          />
+          Show only live matches
         </label>
         <label className="checkbox-label">
           <input

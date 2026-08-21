@@ -8,6 +8,8 @@ import jp.odds.repository.DailyHandballMatchDataRepository
 import jp.odds.repository.MatchPredictionRepository
 import jp.odds.service.FootballService
 import jp.odds.service.HandballService
+import jp.odds.service.news.MatchTeamNews
+import jp.odds.service.news.TeamNewsService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
@@ -18,8 +20,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * Builds a prediction for one match: the stored odds and public vote, plus - once the match is
- * under way - the clock and Sofascore's live statistics, handed to Claude as a compact fact sheet.
+ * Builds a prediction for one match: the stored odds and public vote, football team news off the
+ * news desks, plus - once the match is under way - the clock and Sofascore's live statistics, all
+ * handed to Claude as a compact fact sheet.
  *
  * The fact sheet is returned alongside the prediction, because a prediction is only worth as much
  * as the numbers behind it and those should be visible rather than implied.
@@ -31,7 +34,8 @@ class MatchPredictionService(
     private val handballRepository: DailyHandballMatchDataRepository,
     private val footballService: FootballService,
     private val handballService: HandballService,
-    private val matchPredictionRepository: MatchPredictionRepository
+    private val matchPredictionRepository: MatchPredictionRepository,
+    private val teamNewsService: TeamNewsService
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -65,10 +69,18 @@ class MatchPredictionService(
 
         val clockLine = if (facts.isLive) liveClockLine(facts, sport) else null
 
+        // Team news is a football-only source list for now, and a match already under way is
+        // better read off the clock and the statistics than off this morning's headlines.
+        val teamNews = if (sport == SportType.Football && !facts.isLive && !facts.isFinished) {
+            runCatching { teamNewsService.forMatch(facts.homeTeam, facts.awayTeam) }
+                .onFailure { log.warn("Team news lookup failed for event {}", facts.eventId, it) }
+                .getOrNull()
+        } else null
+
         val statLines = statistics?.let { formatStatistics(it) }.orEmpty()
-        val context = buildContext(facts, clockLine, statLines)
+        val context = buildContext(facts, clockLine, statLines, teamNews)
         val answer = claudeService.ask(
-            ClaudeAskRequest(prompt = buildPrompt(facts, context), provider = request.provider)
+            ClaudeAskRequest(prompt = buildPrompt(facts, context, teamNews), provider = request.provider)
         )
 
         // The percentages live in a closing line meant for us, not for the reader: pull them out
@@ -87,6 +99,7 @@ class MatchPredictionService(
             statusDescription = facts.statusDescription,
             wasLive = facts.isLive,
             hadStatistics = statLines.isNotEmpty(),
+            teamNewsHeadlines = teamNews?.headlineCount ?: 0,
             probabilityHome = probabilities?.home,
             probabilityDraw = probabilities?.draw,
             probabilityAway = probabilities?.away,
@@ -115,6 +128,7 @@ class MatchPredictionService(
             statusDescription = facts.statusDescription,
             isLive = facts.isLive,
             hasStatistics = statLines.isNotEmpty(),
+            teamNewsHeadlines = teamNews?.headlineCount ?: 0,
             prediction = prose,
             contextUsed = context,
             probabilities = probabilities,
@@ -150,6 +164,7 @@ class MatchPredictionService(
         statusDescription = statusDescription,
         wasLive = wasLive,
         hadStatistics = hadStatistics,
+        teamNewsHeadlines = teamNewsHeadlines,
         probabilities = if (probabilityHome == null && probabilityDraw == null && probabilityAway == null) null
         else PredictionProbabilities(probabilityHome, probabilityDraw, probabilityAway),
         predictedOutcome = predictedOutcome,
@@ -274,7 +289,12 @@ class MatchPredictionService(
         else "$side ${yellow ?: 0} yellow, ${red ?: 0} red"
 
     /** The fact sheet, in the order a human would read it. */
-    private fun buildContext(facts: MatchFacts, clockLine: String?, statLines: List<String>): String = buildString {
+    private fun buildContext(
+        facts: MatchFacts,
+        clockLine: String?,
+        statLines: List<String>,
+        teamNews: MatchTeamNews?
+    ): String = buildString {
         appendLine("Sport: ${facts.sport.name}")
         appendLine("Match: ${facts.homeTeam} (home) vs ${facts.awayTeam} (away)")
         appendLine("Competition: ${facts.tournament}${facts.country?.let { " ($it)" } ?: ""}")
@@ -316,9 +336,42 @@ class MatchPredictionService(
             appendLine("Live match statistics:")
             statLines.forEach { appendLine("  $it") }
         }
+
+        appendTeamNews(teamNews, facts)
     }.trim()
 
-    private fun buildPrompt(facts: MatchFacts, context: String): String = buildString {
+    /**
+     * The team news block, always the same shape: a line per side whether or not anything was
+     * written about it, so the same match read twice reads the same way.
+     */
+    private fun StringBuilder.appendTeamNews(teamNews: MatchTeamNews?, facts: MatchFacts) {
+        if (teamNews == null) {
+            appendLine(
+                when {
+                    facts.sport != SportType.Football ->
+                        "Team news: no news sources are read for ${facts.sport.name.lowercase()}."
+                    facts.isLive || facts.isFinished ->
+                        "Team news: not gathered, the match is past kick-off."
+                    else -> "Team news: the news feeds could not be read just now."
+                }
+            )
+            return
+        }
+        appendLine(
+            "Team news headlines (${teamNews.sourceLabels}; last ${teamNews.maxAgeDays} days, " +
+                "matched by team name):"
+        )
+        teamNews.teams.forEach { team ->
+            if (team.headlines.isEmpty()) {
+                appendLine("  ${team.team}: nothing found")
+            } else {
+                appendLine("  ${team.team}:")
+                team.headlines.forEach { appendLine("    - $it") }
+            }
+        }
+    }
+
+    private fun buildPrompt(facts: MatchFacts, context: String, teamNews: MatchTeamNews?): String = buildString {
         appendLine("Predict the outcome of this match from the facts below.")
         appendLine()
         appendLine(context)
@@ -331,6 +384,12 @@ class MatchPredictionService(
             )
             appendLine()
         }
+        // The skill document, verbatim: how to read the headlines is part of the recipe, not
+        // something to re-word per match.
+        if (teamNews != null && teamNews.guidance.isNotBlank()) {
+            appendLine(teamNews.guidance)
+            appendLine()
+        }
         appendLine("Answer in this shape, in plain prose, no markdown headings:")
         appendLine("1. Most likely outcome (home win / draw / away win) with your own rough percentage for each.")
         if (facts.isLive) {
@@ -339,14 +398,21 @@ class MatchPredictionService(
                     "actually going, beyond the scoreline."
             )
         } else {
-            appendLine("2. What the odds and the public vote imply, and where they disagree.")
+            appendLine(
+                if (teamNews != null && teamNews.headlineCount > 0)
+                    "2. What the odds and the public vote imply, where they disagree, and whether " +
+                        "any headline above is relevant enough to move the call."
+                else "2. What the odds and the public vote imply, and where they disagree."
+            )
         }
         appendLine("3. Whether any of the three prices looks like value against your own percentages, and why.")
         appendLine("4. The main thing that would change your view.")
         appendLine()
         appendLine(
-            "Be concrete and brief - under 200 words. You have only the numbers above: no team news, " +
-                "no form guide, no head-to-head. Say so where it limits the call rather than inventing detail."
+            "Be concrete and brief - under 200 words. You have only what is above" +
+                (if (teamNews != null && teamNews.headlineCount > 0) " - headlines aside, no" else ": no team news, no") +
+                " form guide and no head-to-head. Say so where it limits the call rather than " +
+                "inventing detail."
         )
         appendLine()
         // The percentages are stored and shown next to the market's, so they have to come back in a

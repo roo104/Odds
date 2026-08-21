@@ -81,7 +81,7 @@ function MatchPredictionDialog({event, sport, onPredicted, onClose}: MatchPredic
         <div className="prediction-body">
           {loading && (
             <div className="prediction-loading">
-              Reading the odds{isLive ? ' and live statistics' : ''}…
+              Reading the odds{isLive ? ' and live statistics' : ' and the football news desks'}…
               <span className="prediction-loading-hint">The local CLI takes a few seconds to start.</span>
             </div>
           )}
@@ -97,7 +97,12 @@ function MatchPredictionDialog({event, sport, onPredicted, onClose}: MatchPredic
               )}
               {!prediction.isLive && (
                 <div className="prediction-note">
-                  Match has not kicked off, so there are no live statistics — this is an odds-and-votes read.
+                  Match has not kicked off, so there are no live statistics —{' '}
+                  {prediction.teamNewsHeadlines > 0
+                    ? `this is an odds, votes and team news read (${prediction.teamNewsHeadlines} headline${
+                        prediction.teamNewsHeadlines === 1 ? '' : 's'
+                      }).`
+                    : 'this is an odds-and-votes read, with no team news found for either side.'}
                 </div>
               )}
 

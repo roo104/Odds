@@ -45,6 +45,37 @@ const OUTCOME_LABELS: Record<PredictedOutcome, string> = {
 // Bisection steps for Shin's insider share; 60 halvings is far past double precision
 const SHIN_ITERATIONS = 60;
 
+// The live minute only ever moves by one, so re-reading the clock twice a minute is plenty
+const LIVE_CLOCK_TICK_MS = 30_000;
+
+// A match nobody refreshes should not count on for ever; football's longest added time still fits
+// inside this, so anything past it means the reading is too old to keep running
+const LIVE_OVERFLOW_CAP_MINUTES = 15;
+
+/**
+ * The clock as it stands now: the minute stored at the last refresh, counted on from that moment.
+ * Nothing polls the backend on its own, so an open page would otherwise sit on the minute of
+ * whenever it was last refreshed. Play past normal time is written the way a clock shows it -
+ * `90+3` - which the reading itself gives us, since its elapsed and remaining minutes add up to
+ * how long normal time is in this sport.
+ */
+const formatLiveClock = (match: SofascoreEvent): string | null => {
+  if (match.status.type !== 'inprogress') return null;
+
+  const elapsed = match.liveElapsedMinutes;
+  if (elapsed == null) return null;
+
+  const countedOn = match.lastUpdated
+    ? elapsed + Math.max(0, Math.floor((Date.now() / 1000 - match.lastUpdated) / 60))
+    : elapsed;
+
+  const regulation = match.liveMinutesRemaining != null ? elapsed + match.liveMinutesRemaining : null;
+  if (regulation == null) return `${countedOn}`;
+
+  const played = Math.min(countedOn, regulation + LIVE_OVERFLOW_CAP_MINUTES);
+  return played > regulation ? `${regulation}+${played - regulation}` : `${played}`;
+};
+
 interface MatchesTableProps {
   matches: SofascoreEvent[];
   onMatchClick: (event: SofascoreEvent) => void;
@@ -60,6 +91,16 @@ interface MatchesTableProps {
 function MatchesTable({ matches, onMatchClick, onRefreshMatch, onPredictMatch, shouldHighlight, parseOdds, refreshingMatchId, predictions }: MatchesTableProps) {
   const [oddsTooltip, setOddsTooltip] = React.useState<OddsTooltipState | null>(null);
   const [predictionTooltip, setPredictionTooltip] = React.useState<PredictionTooltipState | null>(null);
+  const [, setClockTick] = React.useState(0);
+
+  const hasLiveMatch = matches.some((match) => match.status.type === 'inprogress');
+
+  // Re-render on a timer so the live minutes keep up; no live match means no timer at all
+  React.useEffect(() => {
+    if (!hasLiveMatch) return;
+    const timer = window.setInterval(() => setClockTick((tick) => tick + 1), LIVE_CLOCK_TICK_MS);
+    return () => window.clearInterval(timer);
+  }, [hasLiveMatch]);
 
   const formatDateTime = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
@@ -314,6 +355,7 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, onPredictMatch, s
           {matches.map((match) => {
             const highestVote = getHighestVote(match);
             const matchResult = getMatchResult(match);
+            const liveClock = formatLiveClock(match);
 
             return (
               <tr
@@ -323,7 +365,17 @@ function MatchesTable({ matches, onMatchClick, onRefreshMatch, onPredictMatch, s
                 onMouseLeave={() => setPredictionTooltip(null)}
                 className={shouldHighlight(match) ? 'highlight-row' : ''}
               >
-                <td>{formatDateTime(match.startTimestamp)}</td>
+                <td className="datetime-cell">
+                  <span className="match-datetime">{formatDateTime(match.startTimestamp)}</span>
+                  {liveClock != null && (
+                    <span
+                      className="live-minute"
+                      title={`Counted on from the clock read ${formatLastUpdated(match.lastUpdated)} · ${match.status.description}`}
+                    >
+                      {liveClock}&prime;
+                    </span>
+                  )}
+                </td>
                 <td className={`team-cell group-start ${matchResult === 'home-win' ? 'winner' : matchResult === 'away-win' ? 'loser' : matchResult === 'draw' ? 'draw' : ''}`}>
                   {match.homeTeam.name}
                 </td>

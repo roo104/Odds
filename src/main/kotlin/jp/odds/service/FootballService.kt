@@ -65,6 +65,7 @@ class FootballService(
                 event.odds = fetchOddsForEvent(event.id)
                 event.voting = fetchVotingForEvent(event.id)
                 event.lastUpdated = now.epochSecond
+                stampLiveClock(event)
 
                 saveOddsHistory(event.id, event.odds, now)
                 saveVotesHistory(event.id, event.voting, now)
@@ -172,6 +173,8 @@ class FootballService(
             votingAway = voting?.away,
             votingTotal = voting?.total,
             lastUpdated = now,
+            liveElapsedMinutes = updatedData.liveElapsedMinutes,
+            liveMinutesRemaining = updatedData.liveMinutesRemaining,
             isTopLeague = updatedData.isTopLeague
         )
     }
@@ -237,6 +240,8 @@ class FootballService(
                 votingAway = data.votingAway,
                 votingTotal = data.votingTotal,
                 lastUpdated = data.lastUpdated,
+                liveElapsedMinutes = data.liveElapsedMinutes,
+                liveMinutesRemaining = data.liveMinutesRemaining,
                 isTopLeague = data.isTopLeague
             )
         }

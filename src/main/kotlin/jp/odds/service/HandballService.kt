@@ -61,6 +61,7 @@ class HandballService(
                 event.odds = fetchOddsForEvent(event.id)
                 event.voting = fetchVotingForEvent(event.id)
                 event.lastUpdated = now.epochSecond
+                stampLiveClock(event)
 
                 saveOddsHistory(event.id, event.odds, now)
                 saveVotesHistory(event.id, event.voting, now)
@@ -154,6 +155,8 @@ class HandballService(
             votingAway = voting?.away,
             votingTotal = voting?.total,
             lastUpdated = now,
+            liveElapsedMinutes = updatedData.liveElapsedMinutes,
+            liveMinutesRemaining = updatedData.liveMinutesRemaining,
             isTopLeague = null
         )
     }
@@ -208,6 +211,8 @@ class HandballService(
                 votingAway = data.votingAway,
                 votingTotal = data.votingTotal,
                 lastUpdated = data.lastUpdated,
+                liveElapsedMinutes = data.liveElapsedMinutes,
+                liveMinutesRemaining = data.liveMinutesRemaining,
                 isTopLeague = null
             )
         }

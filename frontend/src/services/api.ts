@@ -389,6 +389,8 @@ export interface MatchPrediction {
   statusDescription: string;
   isLive: boolean;
   hasStatistics: boolean;
+  /** Team news headlines Claude was given; 0 when there were none to give. */
+  teamNewsHeadlines: number;
   prediction: string;
   contextUsed: string;
   probabilities: PredictionProbabilities | null;
@@ -410,6 +412,8 @@ export interface StoredMatchPrediction {
   statusDescription: string;
   wasLive: boolean;
   hadStatistics: boolean;
+  /** Team news headlines the prediction was given; 0 when there were none to give. */
+  teamNewsHeadlines: number;
   probabilities: PredictionProbabilities | null;
   predictedOutcome: PredictedOutcome | null;
   marketOdds: PredictionOdds | null;

@@ -25,6 +25,7 @@ function FootballMatchesView({ currentDate, onDateChange }: FootballMatchesViewP
   const [allMatches, setAllMatches] = useState<SofascoreEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [filterNotStarted, setFilterNotStarted] = useState(false);
+  const [filterLive, setFilterLive] = useState(false);
   const [filterMatchCriteria, setFilterMatchCriteria] = useState(false);
   const [minOdds, setMinOdds] = useState(2.5);
   const [minVotePercent, setMinVotePercent] = useState(65);
@@ -126,6 +127,10 @@ function FootballMatchesView({ currentDate, onDateChange }: FootballMatchesViewP
       filtered = filtered.filter(m => m.status.description === 'Not started');
     }
 
+    if (filterLive) {
+      filtered = filtered.filter(m => m.status.type === 'inprogress');
+    }
+
     if (filterMatchCriteria) {
       filtered = filtered.filter(shouldHighlight);
     }
@@ -150,6 +155,10 @@ function FootballMatchesView({ currentDate, onDateChange }: FootballMatchesViewP
       matchesToConsider = matchesToConsider.filter(m => m.status.description === 'Not started');
     }
 
+    if (filterLive) {
+      matchesToConsider = matchesToConsider.filter(m => m.status.type === 'inprogress');
+    }
+
     if (filterMatchCriteria) {
       matchesToConsider = matchesToConsider.filter(shouldHighlight);
     }
@@ -165,7 +174,7 @@ function FootballMatchesView({ currentDate, onDateChange }: FootballMatchesViewP
           .filter((name): name is string => !!name)
       )
     ).sort();
-  }, [allMatches, filterNotStarted, filterMatchCriteria, filterTopLeaguesOnly, minOdds, minVotePercent]);
+  }, [allMatches, filterNotStarted, filterLive, filterMatchCriteria, filterTopLeaguesOnly, minOdds, minVotePercent]);
 
   // Clear selected countries when filter changes and they're no longer available
   useEffect(() => {
@@ -262,6 +271,8 @@ function FootballMatchesView({ currentDate, onDateChange }: FootballMatchesViewP
       <FilterControls
         filterNotStarted={filterNotStarted}
         setFilterNotStarted={setFilterNotStarted}
+        filterLive={filterLive}
+        setFilterLive={setFilterLive}
         filterMatchCriteria={filterMatchCriteria}
         setFilterMatchCriteria={setFilterMatchCriteria}
         minOdds={minOdds}

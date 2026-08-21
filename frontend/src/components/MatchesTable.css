@@ -138,6 +138,27 @@
   white-space: nowrap;
 }
 
+/* The kick-off time and the live minute each hold together, but may sit on two lines */
+.matches-table td.datetime-cell {
+  white-space: normal;
+}
+
+.match-datetime {
+  white-space: nowrap;
+}
+
+/* Minutes played, shown next to the kick-off time while the match is live */
+.live-minute {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background-color: rgba(244, 67, 54, 0.25);
+  color: #ff8a80;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* Long team/tournament names wrap instead of overflowing their fixed column */
 .matches-table td {
   overflow-wrap: anywhere;

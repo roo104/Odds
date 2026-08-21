@@ -65,7 +65,11 @@ data class SofascoreEvent(
     var homeFormScore: Int? = null,
     var awayFormScore: Int? = null,
     var lastUpdated: Long? = null,
-    var isTopLeague: Boolean? = null
+    var isTopLeague: Boolean? = null,
+    /** Minutes played when the clock was last read; null unless the match was live at that moment. */
+    var liveElapsedMinutes: Int? = null,
+    /** Minutes of normal time left at that same reading - [lastUpdated] says how old it is. */
+    var liveMinutesRemaining: Int? = null
 )
 
 data class Team(
